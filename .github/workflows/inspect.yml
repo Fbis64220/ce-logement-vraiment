@@ -4,19 +4,18 @@ jobs:
   inspect:
     runs-on: ubuntu-latest
     steps:
-      - name: BPE géolocalisée
+      - name: Codes commerce de la BPE 2024
         run: |
           pip install -q pyarrow
-          curl -sS "https://www.data.gouv.fr/api/1/datasets/base-permanente-des-equipements-3/" | python3 -c "import json,sys;d=json.load(sys.stdin);print(d['title']);print((d.get('organization') or {}).get('name'));print(d['description'][:1200])"
-          curl -sSL -o bpe.parquet "https://static.data.gouv.fr/resources/base-permanente-des-equipements-3/20260330-145351/bpe24.parquet"; ls -la bpe.parquet
+          curl -sSL -o bpe.parquet "https://static.data.gouv.fr/resources/base-permanente-des-equipements-3/20260330-145351/bpe24.parquet"
           python3 - <<'PY'
-          import pyarrow.parquet as pq
-          t=pq.read_table('bpe.parquet'); print(t.num_rows); print(t.schema)
-          df=t.slice(0,3).to_pylist(); print(df)
-          import pyarrow.compute as pc
-          ty=t.column('TYPEQU') if 'TYPEQU' in t.column_names else None
-          if ty is not None:
-              vc=pc.value_counts(ty).to_pylist(); print(sorted([ (v['values'],v['counts']) for v in vc if str(v['values']).startswith('B')]))
+          import pyarrow.parquet as pq, pyarrow.compute as pc, random
+          t=pq.read_table('bpe.parquet', columns=['TYPEQU','NOMRS','DEP','QUALITE_XY','LATITUDE'])
+          for code in ['B101','B102','B103','B104','B105','B201','B202','B203','B204','B205','B206','B207','B208']:
+              s=t.filter(pc.equal(t['TYPEQU'],code))
+              if s.num_rows==0: print(code,'absent'); continue
+              names=[n for n in s['NOMRS'].to_pylist() if n]; random.seed(1)
+              print(code, s.num_rows, '| sans coord:', s.filter(pc.is_null(s['LATITUDE'])).num_rows, '|', ' / '.join(random.sample(names, min(10,len(names)))))
+          print(sorted(set(pc.unique(t['QUALITE_XY']).to_pylist()), key=str))
           PY
-          echo "===== pages INSEE BPE"
-          for u in https://www.insee.fr/fr/statistiques/8217525 https://www.insee.fr/fr/statistiques/8217527 https://www.insee.fr/fr/metadonnees/source/serie/s1161; do echo "-- $u"; curl -sSL -A "Mozilla/5.0" "$u" | grep -oE 'href="[^"]*(fichier|BPE|bpe)[^"]*"' | head -15; done
+          echo "===== liens INSEE"; curl -sSL -A "Mozilla/5.0" "https://www.insee.fr/fr/statistiques/8217525?sommaire=8217537" | grep -oE 'href="[^"]*(fichier|\.zip|\.parquet|\.csv)[^"]*"' | head -20
