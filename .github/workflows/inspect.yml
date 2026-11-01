@@ -4,28 +4,30 @@ jobs:
   inspect:
     runs-on: ubuntu-latest
     steps:
-      - name: Arrêts consolidés (transport.data.gouv.fr)
+      - name: Recherches
         run: |
           curl -sS "https://transport.data.gouv.fr/api/datasets" -o ds.json
           python3 - <<'PY'
           import json
-          d=json.load(open('ds.json'))
+          d=json.load(open('ds.json')); print(len(d), 'jeux')
           for x in d:
-              t=((x.get('title') or '')+' '+(x.get('slug') or '')).lower()
-              if ('france' in t or 'national' in t) and ('arr' in t or 'stop' in t or 'transport en commun' in t):
-                  print('#', x.get('slug'), '|', x.get('title'), '|', x.get('type'), '| id', x.get('id'), x.get('datagouv_id'))
-                  for r in x.get('resources',[])[:10]:
-                      print('   ', r.get('title'), '|', r.get('format'), '|', r.get('original_url') or r.get('url'))
+              t=(x.get('title') or '')
+              if any(k in t.lower() for k in ['nationa','consolid','france enti','toute la france']):
+                  print('#', x.get('slug'), '|', t, '|', x.get('type'))
+                  for r in x.get('resources',[])[:6]: print('   ', r.get('title'), '|', r.get('format'), '|', r.get('original_url') or r.get('url'))
           PY
-      - name: BPE (data.gouv.fr)
-        run: |
-          for q in "base permanente des equipements" "bpe geolocalise"; do
-            curl -sS "https://www.data.gouv.fr/api/1/datasets/?q=$(python3 -c "import urllib.parse,sys;print(urllib.parse.quote(sys.argv[1]))" "$q")&page_size=6" -o b.json
-            python3 - <<'PY'
+          echo "===== INSEE BPE sur data.gouv"
+          curl -sS "https://www.data.gouv.fr/api/1/datasets/?organization=534fff81a3a7292c64a77e5c&q=equipements&page_size=5" -o b.json
+          python3 - <<'PY'
           import json
           for x in json.load(open('b.json'))['data']:
-              print('#', x['slug'], '|', (x.get('organization') or {}).get('name'), '|', x['last_modified'][:10])
-              for r in x['resources'][:12]:
-                  print('   ', r['title'][:80], '|', r.get('format'), '|', r.get('filesize'), '|', r['url'])
+              print('#', x['slug'], '|', x['last_modified'][:10])
+              for r in x['resources'][:15]: print('   ', r['title'][:90], '|', r.get('format'), '|', r.get('filesize'), '|', r['url'])
           PY
-          done
+          echo "===== arrets data.gouv"
+          curl -sS "https://www.data.gouv.fr/api/1/datasets/?q=arrets%20transport%20en%20commun%20france%20consolide&page_size=6" -o a.json
+          python3 -c "
+          import json
+          for x in json.load(open('a.json'))['data']:
+              print('#', x['slug'], '|', (x.get('organization') or {}).get('name'), '|', x['last_modified'][:10])
+              [print('   ', r['title'][:80], '|', r.get('format'), '|', r.get('filesize'), '|', r['url']) for r in x['resources'][:6]]"
