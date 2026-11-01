@@ -1,0 +1,991 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ce logement, vraiment</title>
+<meta name="description" content="Le rapport complet d'une adresse à partir de données publiques ouvertes : prix des ventes voisines, DPE, risques, bruit, connexion, écoles, qualité de l'eau.">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<style>
+:root{
+  --bg:#f6f5f1; --surface:#ffffff; --surface-2:#efede6; --ink:#1b1d1f; --ink-2:#4a4f55; --line:#d8d5cc;
+  --brand:#0b4f6c; --brand-ink:#ffffff; --focus:#c2410c;
+  --ok:#166534; --ok-bg:#dcfce7; --warn:#92400e; --warn-bg:#fef3c7; --bad:#991b1b; --bad-bg:#fee2e2;
+  --info:#1e3a8a; --info-bg:#dbeafe;
+  --radius:12px; --shadow:0 1px 2px rgba(0,0,0,.06),0 4px 16px rgba(0,0,0,.05);
+  font-family: system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  color-scheme: light;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);line-height:1.5;font-size:16px}
+a{color:var(--brand)}
+a:hover{text-decoration-thickness:2px}
+:focus-visible{outline:3px solid var(--focus);outline-offset:2px;border-radius:4px}
+.skip{position:absolute;left:-999px;top:0;background:var(--brand);color:#fff;padding:.6rem 1rem;z-index:1000}
+.skip:focus{left:8px;top:8px}
+.wrap{max-width:1120px;margin:0 auto;padding:0 16px}
+.sr-only{position:absolute!important;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+
+/* Header */
+.top{background:var(--surface);border-bottom:1px solid var(--line)}
+.top .wrap{display:flex;align-items:center;justify-content:space-between;gap:1rem;min-height:56px}
+.logo{font-weight:800;letter-spacing:-.01em;color:var(--ink);text-decoration:none;font-size:1.1rem}
+.logo span{color:var(--brand)}
+.proto{font-size:.8rem;color:var(--ink-2);border:1px solid var(--line);border-radius:999px;padding:.15rem .6rem;white-space:nowrap}
+
+/* Hero */
+.hero{padding:2.2rem 0 1.4rem}
+.hero h1{font-size:clamp(1.6rem,4.2vw,2.5rem);line-height:1.15;margin:0 0 .6rem;letter-spacing:-.02em;max-width:22ch}
+.hero p.lead{font-size:1.1rem;color:var(--ink-2);margin:0 0 1.4rem;max-width:62ch}
+
+/* Search / combobox */
+.search{position:relative;max-width:720px}
+.search label{display:block;font-weight:600;margin-bottom:.35rem}
+.search-row{display:flex;gap:.5rem}
+.search input{flex:1;min-width:0;font:inherit;font-size:1.05rem;padding:.8rem 1rem;border:2px solid #6b7280;border-radius:10px;background:#fff;color:var(--ink)}
+.search input:focus{border-color:var(--brand);outline:3px solid var(--focus);outline-offset:1px}
+.btn{font:inherit;font-weight:600;border-radius:10px;border:2px solid var(--brand);background:var(--brand);color:var(--brand-ink);padding:.7rem 1.1rem;cursor:pointer;white-space:nowrap;text-decoration:none;display:inline-flex;align-items:center;gap:.4rem}
+.btn:hover{filter:brightness(1.1)}
+.btn.ghost{background:transparent;color:var(--brand)}
+.btn.small{padding:.4rem .75rem;font-size:.9rem}
+.hint{font-size:.9rem;color:var(--ink-2);margin:.5rem 0 0}
+.listbox{position:absolute;left:0;right:0;top:100%;margin:.25rem 0 0;padding:.25rem;list-style:none;background:#fff;border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow);z-index:1001;max-height:320px;overflow:auto}
+.listbox[hidden]{display:none}
+.listbox li{padding:.6rem .75rem;border-radius:8px;cursor:pointer}
+.listbox li small{display:block;color:var(--ink-2)}
+.listbox li[aria-selected="true"],.listbox li:hover{background:var(--info-bg)}
+.examples{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:.8rem;align-items:center}
+.examples span{font-size:.9rem;color:var(--ink-2)}
+.chip{font:inherit;font-size:.9rem;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:999px;padding:.35rem .8rem;cursor:pointer}
+.chip:hover{border-color:var(--brand)}
+.msg{margin-top:.8rem;padding:.75rem 1rem;border-radius:10px;font-size:.95rem}
+.msg.error{background:var(--bad-bg);color:var(--bad);border:1px solid #fca5a5}
+.msg.info{background:var(--info-bg);color:var(--info);border:1px solid #93c5fd}
+
+/* Value prop */
+.value{padding:1rem 0 2.5rem}
+.value h2,.section-title{font-size:1.25rem;margin:0 0 .3rem}
+.value .sub{color:var(--ink-2);margin:0 0 1rem}
+.sources-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:.6rem;margin:0;padding:0;list-style:none}
+.sources-grid li{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:.7rem .8rem}
+.sources-grid strong{display:block;font-size:.95rem}
+.sources-grid span{font-size:.85rem;color:var(--ink-2)}
+.compare{margin-top:1.5rem;overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius)}
+.compare table{border-collapse:collapse;width:100%;min-width:640px;font-size:.92rem}
+.compare th,.compare td{padding:.55rem .7rem;border-bottom:1px solid var(--line);text-align:center}
+.compare th:first-child,.compare td:first-child{text-align:left}
+.compare thead th{background:var(--surface-2);font-weight:700}
+.compare td.us,.compare th.us{background:#e6f0f4;font-weight:700}
+.compare caption{text-align:left;padding:.8rem .8rem .2rem;font-weight:700}
+.yes{color:var(--ok)} .no{color:#6b7280} .part{color:var(--warn)}
+.how{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:1rem;margin-top:1.5rem}
+.how div{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:1rem}
+.how h3{margin:.1rem 0 .3rem;font-size:1rem}
+.how p{margin:0;color:var(--ink-2);font-size:.93rem}
+
+/* Report */
+.report{padding:1.5rem 0 3rem}
+.report-head{display:flex;flex-wrap:wrap;justify-content:space-between;gap:1rem;align-items:flex-start;margin-bottom:1rem}
+.report-head h2{margin:0;font-size:clamp(1.3rem,3vw,1.8rem);letter-spacing:-.01em}
+.report-head .meta{color:var(--ink-2);font-size:.9rem;margin:.2rem 0 0}
+.actions{display:flex;flex-wrap:wrap;gap:.5rem}
+.banner{padding:.8rem 1rem;border-radius:10px;margin:0 0 1rem;font-size:.95rem}
+.banner.sample{background:var(--warn-bg);border:1px solid #fcd34d;color:#78350f}
+.coverage{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:1rem;margin-bottom:1rem}
+.coverage h3{margin:0 0 .6rem;font-size:1rem}
+.coverage ul{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:.4rem}
+.coverage li{display:flex;gap:.5rem;align-items:flex-start;font-size:.88rem;padding:.35rem .5rem;border-radius:8px;background:var(--surface-2)}
+.st{font-weight:700;font-size:.75rem;border-radius:999px;padding:.05rem .5rem;white-space:nowrap;flex:none}
+.st.live{background:var(--ok-bg);color:var(--ok)}
+.st.sample{background:var(--warn-bg);color:var(--warn)}
+.st.error{background:var(--bad-bg);color:var(--bad)}
+.st.loading{background:var(--info-bg);color:var(--info)}
+.st.empty{background:#e5e7eb;color:#374151}
+
+.synth{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem}
+.synth section{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:1rem}
+.synth h3{margin:0 0 .6rem;font-size:1.05rem;display:flex;align-items:center;gap:.5rem}
+.synth ul{margin:0;padding:0;list-style:none;display:grid;gap:.45rem}
+.synth li{padding:.55rem .7rem;border-radius:8px;font-size:.95rem}
+.synth .att li{background:var(--bad-bg);border-left:4px solid var(--bad)}
+.synth .fort li{background:var(--ok-bg);border-left:4px solid var(--ok)}
+.synth li small{display:block;color:var(--ink-2);font-size:.8rem}
+.tag{font-size:.72rem;font-weight:700;background:var(--warn-bg);color:var(--warn);border-radius:4px;padding:0 .35rem;margin-left:.3rem;white-space:nowrap}
+
+.map-wrap{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:1rem;margin-bottom:1rem}
+#map{height:420px;border-radius:8px;border:1px solid var(--line);background:#e5e7eb}
+.legend{display:flex;flex-wrap:wrap;gap:.4rem 1rem;margin-top:.6rem;font-size:.85rem;color:var(--ink-2)}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:50%;margin-right:.3rem;vertical-align:-1px;border:1px solid rgba(0,0,0,.3)}
+.layer-toggles{display:flex;flex-wrap:wrap;gap:.4rem .9rem;margin:.2rem 0 .6rem;font-size:.92rem}
+.layer-toggles label{display:inline-flex;align-items:center;gap:.35rem;cursor:pointer}
+.layer-toggles input{width:18px;height:18px;accent-color:var(--brand)}
+
+.cards{display:grid;grid-template-columns:repeat(2,1fr);gap:1rem}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:1rem 1rem .8rem;display:flex;flex-direction:column;box-shadow:var(--shadow)}
+.card h3{margin:0 0 .5rem;font-size:1.1rem;display:flex;align-items:center;gap:.5rem;justify-content:space-between}
+.card{min-width:0}
+.card .body{flex:1;min-width:0;overflow-x:auto}
+.big{font-size:1.7rem;font-weight:800;letter-spacing:-.02em;line-height:1.1}
+.muted{color:var(--ink-2)}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:.6rem;margin:.3rem 0 .8rem}
+.kpi{background:var(--surface-2);border-radius:8px;padding:.55rem .65rem}
+.kpi .l{font-size:.8rem;color:var(--ink-2)}
+.kpi .v{font-size:1.15rem;font-weight:700}
+.card table{width:100%;border-collapse:collapse;font-size:.88rem}
+.card th,.card td{text-align:left;padding:.35rem .3rem;border-bottom:1px solid var(--line);vertical-align:top}
+.card th{font-weight:600;color:var(--ink-2);font-size:.8rem}
+.card td.num,.card th.num{text-align:right;white-space:nowrap}
+.src{margin:.8rem 0 0;padding-top:.6rem;border-top:1px dashed var(--line);font-size:.8rem;color:var(--ink-2)}
+.src .st{margin-right:.3rem}
+.card-msg{padding:.7rem .8rem;border-radius:8px;font-size:.92rem;margin:.2rem 0 .6rem}
+.card-msg.error{background:var(--bad-bg);color:var(--bad)}
+.card-msg.sample{background:var(--warn-bg);color:#78350f}
+.card-msg.empty{background:var(--surface-2);color:var(--ink)}
+.skeleton{height:90px;border-radius:8px;background:linear-gradient(90deg,#eee 25%,#f6f6f6 50%,#eee 75%);background-size:200% 100%;animation:sh 1.2s infinite}
+@keyframes sh{to{background-position:-200% 0}}
+@media (prefers-reduced-motion:reduce){.skeleton{animation:none}}
+.dpe-scale{display:flex;gap:3px;margin:.4rem 0 .6rem}
+.dpe-scale span{flex:1;text-align:center;font-weight:800;padding:.3rem 0;border-radius:4px;font-size:.9rem;opacity:.35}
+.dpe-scale span.on{opacity:1;outline:3px solid var(--ink);outline-offset:1px}
+.dpe-A{background:#008a5e;color:#fff}.dpe-B{background:#33a357;color:#fff}.dpe-C{background:#9dc76c;color:#1b1d1f}.dpe-D{background:#f2e33a;color:#1b1d1f}
+.dpe-E{background:#f2b33b;color:#1b1d1f}.dpe-F{background:#ec7d2d;color:#1b1d1f}.dpe-G{background:#d1281f;color:#fff}
+.bar{display:flex;height:22px;border-radius:6px;overflow:hidden;margin:.3rem 0}
+.bar span{display:block;height:100%}
+.pill{display:inline-block;border-radius:999px;padding:.1rem .6rem;font-size:.82rem;font-weight:700}
+.pill.ok{background:var(--ok-bg);color:var(--ok)}.pill.bad{background:var(--bad-bg);color:var(--bad)}.pill.warn{background:var(--warn-bg);color:var(--warn)}.pill.neutral{background:#e5e7eb;color:#374151}
+ul.plain{margin:.2rem 0;padding-left:1.1rem}
+ul.plain li{margin:.15rem 0}
+details.more{margin-top:.4rem}
+details.more summary{cursor:pointer;color:var(--brand);font-weight:600;font-size:.9rem}
+.licences{margin-top:1.5rem;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:1rem;font-size:.88rem}
+.licences h3{margin:0 0 .5rem;font-size:1rem}
+.licences ul{margin:0;padding-left:1.1rem}
+
+footer{border-top:1px solid var(--line);background:var(--surface);padding:1.5rem 0;font-size:.88rem;color:var(--ink-2)}
+footer p{margin:.3rem 0}
+.print-only{display:none}
+
+@media (max-width:760px){
+  .synth,.cards{grid-template-columns:1fr}
+  #map{height:320px}
+  .search-row{flex-direction:column}
+  .search-row .btn{justify-content:center}
+}
+@media print{
+  body{background:#fff;font-size:11pt}
+  .top,.hero,.value,.actions,footer,.skip,.layer-toggles,details.more summary,.no-print{display:none!important}
+  details.more>*{display:block}
+  .print-only{display:block}
+  .card,.synth section,.coverage,.map-wrap,.licences{box-shadow:none;break-inside:avoid;border-color:#999}
+  .cards{grid-template-columns:1fr 1fr}
+  #map{height:300px}
+  a{color:#000}
+  .report{padding-top:0}
+  @page{margin:12mm}
+}
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Aller au contenu</a>
+<header class="top">
+  <div class="wrap">
+    <a class="logo" href="./" aria-label="Ce logement, vraiment – accueil">Ce logement, <span>vraiment</span></a>
+    <span class="proto">Prototype · données ouvertes</span>
+  </div>
+</header>
+
+<main id="main">
+  <!-- Écran 1 : recherche + différenciation -->
+  <section class="hero" aria-labelledby="h-hero">
+    <div class="wrap">
+      <h1 id="h-hero">Avant de signer, découvrez ce que l'annonce ne dit pas.</h1>
+      <p class="lead">Une adresse, <strong>un seul rapport</strong> qui réunit 8 sources publiques aujourd'hui éparpillées sur une dizaine de sites : prix réels des ventes voisines, DPE, risques, bruit, connexion, écoles, eau du robinet.</p>
+
+      <form class="search" id="search-form" role="search" autocomplete="off" novalidate>
+        <label for="addr">Adresse du logement</label>
+        <div class="search-row">
+          <input id="addr" name="addr" type="text" placeholder="Ex. : 8 boulevard du Port, Amiens"
+                 role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="suggestions"
+                 aria-describedby="addr-hint" spellcheck="false" inputmode="search">
+          <button class="btn" type="submit">Obtenir le rapport</button>
+        </div>
+        <ul id="suggestions" class="listbox" role="listbox" aria-label="Adresses proposées" hidden></ul>
+        <p id="addr-hint" class="hint">Saisissez au moins 3 caractères, puis choisissez une adresse avec les flèches ↑ ↓ et Entrée. Gratuit, sans compte.</p>
+        <div class="examples">
+          <span>Essayer :</span>
+          <button type="button" class="chip" data-example="20 avenue de Ségur 75007 Paris">Paris 7e</button>
+          <button type="button" class="chip" data-example="8 boulevard du Port 80000 Amiens">Amiens</button>
+          <button type="button" class="chip" data-example="1 place de la Bourse 33000 Bordeaux">Bordeaux</button>
+          <button type="button" class="chip" id="demo-btn">Démo hors ligne (données d'exemple)</button>
+        </div>
+        <div id="search-msg" role="status" aria-live="polite"></div>
+      </form>
+    </div>
+  </section>
+
+  <section class="value" id="value" aria-labelledby="h-value">
+    <div class="wrap">
+      <h2 id="h-value">8 sources officielles, 1 rapport, chaque chiffre sourcé et daté</h2>
+      <p class="sub">Là où il faut aujourd'hui ouvrir un onglet par administration, le rapport les interroge toutes en même temps, en direct.</p>
+      <ul class="sources-grid" id="sources-grid"></ul>
+
+      <div class="compare">
+        <table>
+          <caption>Ce que vous obtenez, comparé aux outils existants</caption>
+          <thead><tr><th scope="col">Thème</th><th scope="col">Explore DVF</th><th scope="col">Meilleurs Agents</th><th scope="col">Géorisques</th><th scope="col" class="us">Ce logement, vraiment</th></tr></thead>
+          <tbody>
+            <tr><th scope="row">Prix réels des ventes voisines</th><td class="yes">✔ Oui</td><td class="part">◐ Estimation</td><td class="no">✘ Non</td><td class="us yes">✔ Oui + tendance</td></tr>
+            <tr><th scope="row">DPE du logement et du quartier</th><td class="no">✘ Non</td><td class="no">✘ Non</td><td class="no">✘ Non</td><td class="us yes">✔ Oui</td></tr>
+            <tr><th scope="row">Risques naturels et industriels</th><td class="no">✘ Non</td><td class="no">✘ Non</td><td class="yes">✔ Oui</td><td class="us yes">✔ Oui + arrêtés CatNat</td></tr>
+            <tr><th scope="row">Bruit, écoles, eau, fibre</th><td class="no">✘ Non</td><td class="part">◐ En partie</td><td class="no">✘ Non</td><td class="us yes">✔ Oui</td></tr>
+            <tr><th scope="row">Points d'attention en clair</th><td class="no">✘ Non</td><td class="no">✘ Non</td><td class="part">◐ Jargon réglementaire</td><td class="us yes">✔ Oui</td></tr>
+            <tr><th scope="row">Source et date sur chaque chiffre</th><td class="part">◐ En partie</td><td class="no">✘ Non</td><td class="yes">✔ Oui</td><td class="us yes">✔ Oui</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="how">
+        <div><h3>1. Une adresse</h3><p>Géocodée avec la Base Adresse Nationale, la même que celle des services publics.</p></div>
+        <div><h3>2. Huit sources interrogées en direct</h3><p>Rien n'est stocké. Chaque bloc indique sa source, sa licence et la date de ses données.</p></div>
+        <div><h3>3. Un rapport à partager</h3><p>Points forts, points d'attention, carte : à imprimer en PDF ou à envoyer par lien.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Rapport -->
+  <section class="report" id="report" aria-labelledby="h-report" hidden>
+    <div class="wrap">
+      <div class="report-head">
+        <div>
+          <p class="muted" style="margin:0;font-size:.85rem">Rapport d'adresse</p>
+          <h2 id="h-report" tabindex="-1"></h2>
+          <p class="meta" id="report-meta"></p>
+        </div>
+        <div class="actions">
+          <button class="btn small" type="button" id="share-btn">Partager le lien</button>
+          <button class="btn small ghost" type="button" id="print-btn">Imprimer / PDF</button>
+          <button class="btn small ghost" type="button" id="new-btn">Nouvelle adresse</button>
+        </div>
+      </div>
+      <div id="share-msg" role="status" aria-live="polite" class="no-print"></div>
+      <div id="sample-banner"></div>
+
+      <section class="coverage" aria-labelledby="h-cov">
+        <h3 id="h-cov">Sources interrogées pour cette adresse</h3>
+        <ul id="coverage"></ul>
+      </section>
+
+      <div class="synth" aria-live="polite">
+        <section class="att" aria-labelledby="h-att"><h3 id="h-att"><span aria-hidden="true">⚠️</span> Points d'attention</h3><ul id="att-list"><li class="muted" style="background:none;border:0">Analyse en cours…</li></ul></section>
+        <section class="fort" aria-labelledby="h-fort"><h3 id="h-fort"><span aria-hidden="true">✅</span> Points forts</h3><ul id="fort-list"><li class="muted" style="background:none;border:0">Analyse en cours…</li></ul></section>
+      </div>
+
+      <section class="map-wrap" aria-labelledby="h-map">
+        <h3 id="h-map" class="section-title">Carte des alentours</h3>
+        <div class="layer-toggles" id="layer-toggles" role="group" aria-label="Couches affichées sur la carte"></div>
+        <div id="map" role="region" aria-label="Carte interactive des alentours. Les mêmes informations sont détaillées dans les fiches ci-dessous."></div>
+        <div class="legend" id="legend"></div>
+      </section>
+
+      <div class="cards" id="cards"></div>
+
+      <section class="licences" aria-labelledby="h-lic">
+        <h3 id="h-lic">Sources, licences et limites</h3>
+        <ul id="licences"></ul>
+        <p class="muted" style="margin:.6rem 0 0">Ce rapport est une aide à la décision, pas un diagnostic officiel. Il ne remplace ni l'état des risques (ERP) ni le DPE annexés au compromis ou au bail, qui seuls font foi.</p>
+        <p class="print-only" id="print-url"></p>
+      </section>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <p><strong>Vie privée :</strong> aucun compte, aucun cookie, aucun traceur. L'adresse saisie est envoyée directement depuis votre navigateur aux services publics interrogés, et n'est enregistrée nulle part par ce site.</p>
+    <p><strong>Données :</strong> données publiques réutilisées sous Licence Ouverte Etalab 2.0, sauf mention contraire (OpenStreetMap : ODbL). Prototype : les blocs marqués « Exemple » ne décrivent pas la réalité.</p>
+  </div>
+</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+"use strict";
+/* =========================================================================
+   CONFIGURATION – tous les points de branchement des sources sont ici.
+   ========================================================================= */
+const CONFIG = {
+  timeoutMs: 15000,
+  radiusSales: 500,      // m – ventes DVF prises en compte
+  salesMonths: 36,       // fenêtre glissante des ventes
+  radiusDpe: 250,        // m – DPE du voisinage
+  radiusSameBuilding: 25,// m – DPE considérés comme « cette adresse »
+  radiusSchools: 1000,   // m
+  radiusNoise: 400,      // m – axes routiers / ferrés
+  radiusAirport: 5000,   // m
+  fallbackToSample: true, // prototype : si une source échoue, on affiche un exemple SIGNALÉ
+  endpoints: {
+    ban: ["https://data.geopf.fr/geocodage/search", "https://api-adresse.data.gouv.fr/search/"],
+    dvf: (year, dep, insee) => `https://files.data.gouv.fr/geo-dvf/latest/csv/${year}/communes/${dep}/${insee}.csv`,
+    dpe: "https://data.ademe.fr/data-fair/api/v1/datasets/dpe03existant/lines",
+    georisques: "https://www.georisques.gouv.fr/api/v1/resultats_rapport_risque",
+    catnat: "https://www.georisques.gouv.fr/api/v1/gaspar/catnat",
+    overpass: "https://overpass-api.de/api/interpreter",
+    education: "https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-annuaire-education/records",
+    hubeau: "https://hubeau.eaufrance.fr/api/v1/qualite_eau_potable/resultats_dis",
+    arcep: null // pas d'API publique par adresse : voir README (« Brancher Arcep »)
+  }
+};
+
+const SOURCES = {
+  ban:   {name:"Base Adresse Nationale", short:"Adresse", producer:"IGN / Etalab", license:"Licence Ouverte 2.0", licenseUrl:"https://www.etalab.gouv.fr/licence-ouverte-open-licence/", url:"https://adresse.data.gouv.fr", what:"Géocodage de l'adresse"},
+  dvf:   {name:"DVF – Demandes de valeurs foncières", short:"Prix (DVF)", producer:"DGFiP, géolocalisé par Etalab", license:"Licence Ouverte 2.0", licenseUrl:"https://www.etalab.gouv.fr/licence-ouverte-open-licence/", url:"https://www.data.gouv.fr/fr/datasets/demandes-de-valeurs-foncieres-geolocalisees/", what:"Prix des ventes réelles"},
+  dpe:   {name:"DPE logements existants (depuis 07/2021)", short:"Énergie (DPE)", producer:"ADEME", license:"Licence Ouverte 2.0", licenseUrl:"https://www.etalab.gouv.fr/licence-ouverte-open-licence/", url:"https://data.ademe.fr/datasets/dpe03existant", what:"Diagnostics énergétiques"},
+  georisques:{name:"Géorisques – rapport de risques", short:"Risques", producer:"Ministère de la Transition écologique / BRGM", license:"Licence Ouverte 2.0", licenseUrl:"https://www.etalab.gouv.fr/licence-ouverte-open-licence/", url:"https://www.georisques.gouv.fr/doc-api", what:"Risques naturels et technologiques, arrêtés CatNat"},
+  noise: {name:"OpenStreetMap via Overpass (estimation du bruit)", short:"Bruit", producer:"Contributeurs OpenStreetMap", license:"ODbL 1.0", licenseUrl:"https://opendatacommons.org/licenses/odbl/", url:"https://www.openstreetmap.org/copyright", what:"Axes routiers, voies ferrées, aéroports proches"},
+  arcep: {name:"Arcep – Ma connexion internet", short:"Connexion", producer:"Arcep", license:"Licence Ouverte 2.0", licenseUrl:"https://www.etalab.gouv.fr/licence-ouverte-open-licence/", url:"https://maconnexioninternet.arcep.fr", what:"Fibre, ADSL, couverture mobile"},
+  schools:{name:"Annuaire de l'éducation", short:"Écoles", producer:"Ministère de l'Éducation nationale", license:"Licence Ouverte 2.0", licenseUrl:"https://www.etalab.gouv.fr/licence-ouverte-open-licence/", url:"https://data.education.gouv.fr/explore/dataset/fr-en-annuaire-education/", what:"Écoles, collèges, lycées"},
+  water: {name:"Hub'Eau – qualité de l'eau potable", short:"Eau", producer:"Ministère de la Santé (ARS) / OFB", license:"Licence Ouverte 2.0", licenseUrl:"https://www.etalab.gouv.fr/licence-ouverte-open-licence/", url:"https://hubeau.eaufrance.fr/page/api-qualite-eau-potable", what:"Conformité de l'eau du robinet"}
+};
+const THEMES = ["dvf","dpe","georisques","noise","arcep","schools","water"];
+const THEME_TITLES = {dvf:"Prix des ventes voisines", dpe:"Performance énergétique", georisques:"Risques", noise:"Bruit", arcep:"Connexion internet et mobile", schools:"Écoles à proximité", water:"Qualité de l'eau du robinet"};
+
+/* ========================== Utilitaires ========================== */
+const $ = (s, r = document) => r.querySelector(s);
+const esc = (v) => String(v ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const fmtInt = (n) => n == null || isNaN(n) ? "—" : Math.round(n).toLocaleString("fr-FR");
+const fmtEur = (n) => n == null || isNaN(n) ? "—" : Math.round(n).toLocaleString("fr-FR") + " €";
+const fmtDist = (m) => m == null ? "—" : m < 1000 ? `${Math.round(m / 10) * 10} m` : `${(m / 1000).toFixed(1).replace(".", ",")} km`;
+const fmtDate = (d) => { if (!d) return "—"; const x = d instanceof Date ? d : new Date(d); return isNaN(x) ? String(d) : x.toLocaleDateString("fr-FR"); };
+const today = () => new Date().toLocaleDateString("fr-FR");
+const median = (a) => { if (!a.length) return null; const s = [...a].sort((x, y) => x - y); const m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
+function haversine(lat1, lon1, lat2, lon2) {
+  const R = 6371000, r = Math.PI / 180;
+  const dLat = (lat2 - lat1) * r, dLon = (lon2 - lon1) * r;
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * r) * Math.cos(lat2 * r) * Math.sin(dLon / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(a));
+}
+// distance point → polyligne (projection locale équirectangulaire, suffisante à < 10 km)
+function distToLine(lat, lon, pts) {
+  const kx = 111320 * Math.cos(lat * Math.PI / 180), ky = 110540;
+  let best = Infinity;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const ax = (pts[i].lon - lon) * kx, ay = (pts[i].lat - lat) * ky;
+    const bx = (pts[i + 1].lon - lon) * kx, by = (pts[i + 1].lat - lat) * ky;
+    const dx = bx - ax, dy = by - ay, l2 = dx * dx + dy * dy;
+    let t = l2 ? -(ax * dx + ay * dy) / l2 : 0; t = Math.max(0, Math.min(1, t));
+    const px = ax + t * dx, py = ay + t * dy;
+    best = Math.min(best, Math.hypot(px, py));
+  }
+  if (pts.length === 1) best = haversine(lat, lon, pts[0].lat, pts[0].lon);
+  return best;
+}
+class SourceError extends Error { constructor(msg, kind) { super(msg); this.kind = kind || "error"; } }
+async function fetchWithTimeout(url, opts = {}) {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), CONFIG.timeoutMs);
+  try {
+    const res = await fetch(url, {...opts, signal: ctrl.signal});
+    if (!res.ok) throw new SourceError(`réponse HTTP ${res.status}`, res.status === 404 ? "notfound" : "error");
+    return res;
+  } catch (e) {
+    if (e instanceof SourceError) throw e;
+    if (e.name === "AbortError") throw new SourceError("délai dépassé (" + CONFIG.timeoutMs / 1000 + " s)");
+    throw new SourceError("service injoignable depuis votre navigateur (réseau, blocage ou CORS)");
+  } finally { clearTimeout(t); }
+}
+const getJSON = async (url, opts) => (await fetchWithTimeout(url, opts)).json();
+function parseCSV(text) {
+  const rows = []; let row = [], f = "", q = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (q) { if (c === '"') { if (text[i + 1] === '"') { f += '"'; i++; } else q = false; } else f += c; }
+    else if (c === '"') q = true;
+    else if (c === ",") { row.push(f); f = ""; }
+    else if (c === "\n") { row.push(f); rows.push(row); row = []; f = ""; }
+    else if (c !== "\r") f += c;
+  }
+  if (f || row.length) { row.push(f); rows.push(row); }
+  const head = rows.shift() || [];
+  return rows.filter(r => r.length === head.length).map(r => Object.fromEntries(head.map((h, i) => [h, r[i]])));
+}
+const pick = (o, keys) => { for (const k of keys) if (o && o[k] != null && o[k] !== "") return o[k]; return null; };
+// Codes communes : Paris/Lyon/Marseille → code commune principal pour certaines bases
+function mainCityCode(c) {
+  if (/^751\d\d$/.test(c)) return "75056";
+  if (/^6938\d$/.test(c)) return "69123";
+  if (/^132\d\d$/.test(c)) return "13055";
+  return c;
+}
+function depFromCity(c) { return c.startsWith("97") ? c.slice(0, 3) : c.slice(0, 2); }
+
+/* ====================== Données d'exemple (SIGNALÉES) ======================
+   Générées de façon déterministe autour du point demandé, pour que le
+   prototype reste démontrable quand une API est injoignable. Elles ne
+   décrivent PAS la réalité et sont toujours étiquetées « Exemple ». */
+function rng(seed) { let a = seed >>> 0; return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function around(r, lat, lon, maxM) { const d = Math.sqrt(r()) * maxM, a = r() * 2 * Math.PI; return {lat: lat + d * Math.cos(a) / 110540, lon: lon + d * Math.sin(a) / (111320 * Math.cos(lat * Math.PI / 180))}; }
+const SAMPLE = {
+  seed(ctx, salt) { return Math.round(ctx.lat * 1e4) * 31 + Math.round(ctx.lon * 1e4) * 17 + salt; },
+  dvf(ctx) {
+    const r = rng(this.seed(ctx, 1)), base = 2500 + r() * 4500, sales = [];
+    const now = new Date();
+    for (let i = 0; i < 42; i++) {
+      const p = around(r, ctx.lat, ctx.lon, CONFIG.radiusSales), isApt = r() < .7;
+      const surf = Math.round(isApt ? 25 + r() * 75 : 70 + r() * 90);
+      const ppm = base * (0.8 + r() * 0.4) * (isApt ? 1 : 0.9);
+      const d = new Date(now.getFullYear(), now.getMonth() - 4 - Math.floor(r() * 32), 1 + Math.floor(r() * 27));
+      sales.push({date: d.toISOString().slice(0, 10), type: isApt ? "Appartement" : "Maison", surface: surf, price: Math.round(ppm * surf / 1000) * 1000, ppm, rooms: Math.max(1, Math.round(surf / 22)), lat: p.lat, lon: p.lon, dist: haversine(ctx.lat, ctx.lon, p.lat, p.lon), address: "Adresse d'exemple"});
+    }
+    return {sales, updated: sales.map(s => s.date).sort().pop()};
+  },
+  dpe(ctx) {
+    const r = rng(this.seed(ctx, 2)), L = "ABCDEFG", list = [];
+    const w = [.03, .07, .2, .3, .22, .11, .07];
+    const draw = () => { let x = r(), i = 0; while (x > w[i] && i < 6) { x -= w[i]; i++; } return L[i]; };
+    for (let i = 0; i < 60; i++) { const p = around(r, ctx.lat, ctx.lon, CONFIG.radiusDpe); const e = draw(); list.push({label: e, ges: draw(), conso: Math.round(60 + L.indexOf(e) * 60 + r() * 50), surface: Math.round(30 + r() * 80), year: Math.round(1900 + r() * 115), date: new Date(Date.now() - r() * 3 * 365 * 864e5).toISOString().slice(0, 10), lat: p.lat, lon: p.lon, dist: haversine(ctx.lat, ctx.lon, p.lat, p.lon), address: "Adresse d'exemple", type: r() < .7 ? "appartement" : "maison"}); }
+    const same = list.slice(0, 2).map(d => ({...d, lat: ctx.lat, lon: ctx.lon, dist: 0, label: "E", conso: 280}));
+    return {nearby: list, same};
+  },
+  georisques(ctx) {
+    return {
+      natural: [
+        {key: "inondation", label: "Inondation", present: true, statut: "Commune concernée par un plan de prévention"},
+        {key: "retraitGonflementArgile", label: "Retrait-gonflement des argiles", present: true, statut: "Exposition moyenne"},
+        {key: "seisme", label: "Séisme", present: true, statut: "Zone de sismicité 2 (faible)", level: 2},
+        {key: "radon", label: "Radon", present: false, statut: "Potentiel de catégorie 1 (faible)"},
+        {key: "mouvementTerrain", label: "Mouvement de terrain", present: false, statut: "Non concerné"}],
+      tech: [
+        {key: "icpe", label: "Installations industrielles (ICPE)", present: true, statut: "2 installations à moins de 1 km"},
+        {key: "pollutionSols", label: "Pollution des sols", present: false, statut: "Aucun site recensé"},
+        {key: "nucleaire", label: "Nucléaire", present: false, statut: "Non concerné"}],
+      catnat: [{date: "2021-06-19", label: "Inondations et/ou coulées de boue"}, {date: "2018-07-01", label: "Sécheresse"}, {date: "2016-05-30", label: "Inondations et/ou coulées de boue"}],
+      catnatTotal: 6, url: "https://www.georisques.gouv.fr/mes-risques/connaitre-les-risques-pres-de-chez-moi"
+    };
+  },
+  noise(ctx) {
+    const r = rng(this.seed(ctx, 4));
+    const mk = (type, ref, dist) => { const p = around(r, ctx.lat, ctx.lon, 1); return {type, name: ref, dist, geom: [around(r, ctx.lat, ctx.lon, dist * 1.4), around(r, ctx.lat, ctx.lon, dist * 1.4)]}; };
+    return {ways: [mk("primary", "Avenue d'exemple", 120), mk("rail", "Voie ferrée d'exemple", 310)], airports: [], osmDate: null};
+  },
+  arcep() {
+    return {fibre: {eligible: true, operators: 4, since: "2021"}, dsl: {maxMbps: 15}, mobile: [{op: "Opérateur A", g4: "Très bonne couverture", g5: true}, {op: "Opérateur B", g4: "Très bonne couverture", g5: true}, {op: "Opérateur C", g4: "Bonne couverture", g5: false}, {op: "Opérateur D", g4: "Bonne couverture", g5: true}]};
+  },
+  schools(ctx) {
+    const r = rng(this.seed(ctx, 6)), list = [];
+    const types = [["Ecole", "École élémentaire d'exemple"], ["Ecole", "École maternelle d'exemple"], ["Collège", "Collège d'exemple"], ["Lycée", "Lycée d'exemple"], ["Ecole", "École primaire privée d'exemple"]];
+    types.forEach(([t, n], i) => { const p = around(r, ctx.lat, ctx.lon, CONFIG.radiusSchools); list.push({name: n, type: t, statut: i === 4 ? "Privé" : "Public", lat: p.lat, lon: p.lon, dist: haversine(ctx.lat, ctx.lon, p.lat, p.lon), address: "Adresse d'exemple"}); });
+    return {list};
+  },
+  water() {
+    const d = new Date(Date.now() - 20 * 864e5).toISOString().slice(0, 10);
+    return {samples: 14, nonConformBact: 0, nonConformPc: 0, last: {date: d, conclusion: "Eau d'alimentation conforme aux exigences de qualité en vigueur pour l'ensemble des paramètres mesurés."}, distributor: "Distributeur d'exemple", updated: d};
+  }
+};
+
+/* ============================ Géocodage (BAN) ============================ */
+async function banSearch(q, limit = 5) {
+  let lastErr;
+  for (const base of CONFIG.endpoints.ban) {
+    try {
+      const url = `${base}?q=${encodeURIComponent(q)}&limit=${limit}&autocomplete=1`;
+      const j = await getJSON(url);
+      return (j.features || []).map(f => ({
+        label: f.properties.label, city: f.properties.city, postcode: f.properties.postcode,
+        citycode: f.properties.citycode, id: f.properties.id, type: f.properties.type, score: f.properties.score,
+        lon: f.geometry.coordinates[0], lat: f.geometry.coordinates[1]
+      }));
+    } catch (e) { lastErr = e; }
+  }
+  throw lastErr;
+}
+
+/* ============================ Connecteurs ============================ */
+const CONNECTORS = {
+  async dvf(ctx) {
+    if (!ctx.citycode) throw new SourceError("code commune inconnu");
+    const dep = depFromCity(ctx.citycode);
+    if (["57", "67", "68", "976"].includes(dep)) throw new SourceError("DVF ne couvre pas l'Alsace, la Moselle ni Mayotte (livre foncier)", "empty");
+    const y = new Date().getFullYear(), years = [y, y - 1, y - 2, y - 3, y - 4];
+    const res = await Promise.allSettled(years.map(yr => fetchWithTimeout(CONFIG.endpoints.dvf(yr, dep, ctx.citycode)).then(r => r.text())));
+    const ok = res.filter(r => r.status === "fulfilled");
+    if (!ok.length) {
+      const errs = res.map(r => r.reason);
+      if (errs.every(e => e && e.kind === "notfound")) throw new SourceError("aucune vente publiée pour cette commune", "empty");
+      throw errs.find(e => e && e.kind !== "notfound") || new SourceError("fichiers DVF indisponibles");
+    }
+    const rows = ok.flatMap(r => parseCSV(r.value));
+    const byMut = new Map();
+    for (const row of rows) { if (!byMut.has(row.id_mutation)) byMut.set(row.id_mutation, []); byMut.get(row.id_mutation).push(row); }
+    const sales = [];
+    for (const [, group] of byMut) {
+      const g0 = group[0];
+      if (g0.nature_mutation !== "Vente") continue;
+      const hab = group.filter(r => r.type_local === "Appartement" || r.type_local === "Maison");
+      const uniq = new Map(hab.map(r => [`${r.type_local}|${r.surface_reelle_bati}|${r.id_parcelle}|${r.lot1_numero}`, r]));
+      if (uniq.size !== 1) continue; // ventes groupées : prix/m² non interprétable
+      const h = [...uniq.values()][0];
+      const price = parseFloat(g0.valeur_fonciere), surf = parseFloat(h.surface_reelle_bati);
+      const lat = parseFloat(h.latitude), lon = parseFloat(h.longitude);
+      if (!price || !surf || isNaN(lat) || isNaN(lon)) continue;
+      const ppm = price / surf; if (ppm < 300 || ppm > 40000) continue;
+      const dist = haversine(ctx.lat, ctx.lon, lat, lon); if (dist > CONFIG.radiusSales) continue;
+      sales.push({date: g0.date_mutation, type: h.type_local, surface: surf, price, ppm, rooms: parseInt(h.nombre_pieces_principales) || null, lat, lon, dist,
+        address: [h.adresse_numero, h.adresse_suffixe, h.adresse_nom_voie].filter(Boolean).join(" ")});
+    }
+    const updated = rows.reduce((m, r) => r.date_mutation > m ? r.date_mutation : m, "");
+    if (!sales.length) throw new SourceError(`aucune vente de logement trouvée à moins de ${CONFIG.radiusSales} m`, "empty");
+    const limit = new Date(updated); limit.setMonth(limit.getMonth() - CONFIG.salesMonths);
+    const recent = sales.filter(s => new Date(s.date) >= limit);
+    return {sales: recent.length ? recent : sales, updated};
+  },
+
+  async dpe(ctx) {
+    const base = CONFIG.endpoints.dpe;
+    const q = (r, size) => `${base}?size=${size}&geo_distance=${ctx.lon},${ctx.lat},${r}`;
+    const [near, same] = await Promise.all([getJSON(q(CONFIG.radiusDpe, 200)), getJSON(q(CONFIG.radiusSameBuilding, 30))]);
+    const norm = (d) => {
+      const gp = pick(d, ["_geopoint", "geopoint"]); let lat = null, lon = null;
+      if (typeof gp === "string" && gp.includes(",")) [lat, lon] = gp.split(",").map(Number);
+      const label = String(pick(d, ["etiquette_dpe", "Etiquette_DPE", "classe_consommation_energie"]) || "").toUpperCase();
+      return {label, ges: String(pick(d, ["etiquette_ges", "Etiquette_GES"]) || "").toUpperCase(),
+        conso: parseFloat(pick(d, ["conso_5_usages_par_m2_ep", "Conso_5_usages_par_m²_é_primaire", "conso_5_usages_m2_ep"])) || null,
+        surface: parseFloat(pick(d, ["surface_habitable_logement", "Surface_habitable_logement"])) || null,
+        year: pick(d, ["annee_construction", "Année_construction", "periode_construction"]),
+        date: pick(d, ["date_etablissement_dpe", "Date_établissement_DPE", "date_reception_dpe"]),
+        type: pick(d, ["type_batiment", "Type_bâtiment"]),
+        address: pick(d, ["adresse_ban", "Adresse_(BAN)", "adresse_brut"]),
+        banId: pick(d, ["identifiant_ban", "Identifiant__BAN"]),
+        lat, lon, dist: lat != null ? haversine(ctx.lat, ctx.lon, lat, lon) : null};
+    };
+    const valid = (d) => /^[A-G]$/.test(d.label);
+    const nearby = (near.results || []).map(norm).filter(valid);
+    let sameList = (same.results || []).map(norm).filter(valid);
+    if (ctx.id) { const exact = sameList.filter(d => d.banId === ctx.id); if (exact.length) sameList = exact; }
+    if (!nearby.length && !sameList.length) throw new SourceError(`aucun DPE publié à moins de ${CONFIG.radiusDpe} m`, "empty");
+    return {nearby, same: sameList, total: near.total};
+  },
+
+  async georisques(ctx) {
+    const [rep, cat] = await Promise.allSettled([
+      getJSON(`${CONFIG.endpoints.georisques}?latlon=${ctx.lon},${ctx.lat}`),
+      ctx.citycode ? getJSON(`${CONFIG.endpoints.catnat}?code_insee=${ctx.citycode}&page_size=100`) : Promise.reject(new SourceError("pas de code commune"))
+    ]);
+    if (rep.status === "rejected") throw rep.reason;
+    const j = rep.value;
+    const labels = {inondation: "Inondation", risqueCotier: "Submersion marine / risque côtier", seisme: "Séisme", mouvementTerrain: "Mouvement de terrain", reculTraitCote: "Recul du trait de côte",
+      retraitGonflementArgile: "Retrait-gonflement des argiles", avalanche: "Avalanche", feuForet: "Feu de forêt", eruptionVolcanique: "Éruption volcanique", cyclone: "Cyclone / vent", radon: "Radon",
+      icpe: "Installations industrielles (ICPE)", nucleaire: "Nucléaire", canalisationsMatieresDangereuses: "Canalisations de matières dangereuses", pollutionSols: "Pollution des sols", ruptureBarrage: "Rupture de barrage", risqueMinier: "Risque minier"};
+    const conv = (obj) => Object.entries(obj || {}).map(([k, v]) => ({key: k, label: labels[k] || v.libelle || k, present: !!v.present, statut: v.libelleStatutAdresse || v.libelleStatutCommune || (v.present ? "Concerné" : "Non concerné")}));
+    let catnat = [], catnatTotal = null;
+    if (cat.status === "fulfilled") {
+      const data = cat.value.data || [];
+      catnatTotal = cat.value.results ?? data.length;
+      catnat = data.map(a => ({date: a.date_debut_evt || a.date_publication_arrete, label: a.libelle_risque_jo})).sort((a, b) => String(b.date).localeCompare(String(a.date)));
+    }
+    return {natural: conv(j.risquesNaturels), tech: conv(j.risquesTechnologiques), catnat, catnatTotal, url: j.url || "https://www.georisques.gouv.fr/mes-risques"};
+  },
+
+  async noise(ctx) {
+    const {lat, lon} = ctx, R = CONFIG.radiusNoise;
+    const q = `[out:json][timeout:25];(way(around:${R},${lat},${lon})["highway"~"^(motorway|trunk|primary|secondary)$"]["tunnel"!="yes"];way(around:${R},${lat},${lon})["railway"~"^(rail|light_rail|tram)$"]["tunnel"!="yes"]["service"!~"."];);out tags geom;nwr(around:${CONFIG.radiusAirport},${lat},${lon})["aeroway"="aerodrome"]["icao"];out tags center;`;
+    const j = await getJSON(CONFIG.endpoints.overpass, {method: "POST", body: "data=" + encodeURIComponent(q), headers: {"Content-Type": "application/x-www-form-urlencoded"}});
+    const ways = [], airports = [];
+    for (const el of j.elements || []) {
+      const t = el.tags || {};
+      if (t.aeroway === "aerodrome") { const c = el.center || el; airports.push({name: t.name || t.icao, dist: haversine(lat, lon, c.lat, c.lon), lat: c.lat, lon: c.lon}); continue; }
+      if (!el.geometry) continue;
+      const type = t.railway ? (t.railway === "tram" ? "tram" : "rail") : ({motorway: "motorway", trunk: "motorway"}[t.highway] || t.highway);
+      ways.push({type, name: t.name || t.ref || "", dist: distToLine(lat, lon, el.geometry), geom: el.geometry});
+    }
+    return {ways, airports, osmDate: j.osm3s && j.osm3s.timestamp_osm_base};
+  },
+
+  async arcep() {
+    // Pas d'API publique interrogeable par adresse. Voir README pour le branchement
+    // (fichiers trimestriels « immeubles » IPE + couverture mobile « Mon réseau mobile »).
+    throw new SourceError("aucune API publique par adresse : prototype alimenté par des données d'exemple", "nosource");
+  },
+
+  async schools(ctx) {
+    const where = `within_distance(position, geom'POINT(${ctx.lon} ${ctx.lat})', ${CONFIG.radiusSchools / 1000}km)`;
+    const j = await getJSON(`${CONFIG.endpoints.education}?limit=100&where=${encodeURIComponent(where)}`);
+    const list = (j.results || []).filter(r => !r.etat || /ouvert/i.test(r.etat)).map(r => {
+      const p = r.position || {}; const la = p.lat ?? parseFloat(r.latitude), lo = p.lon ?? parseFloat(r.longitude);
+      return {name: r.nom_etablissement, type: r.type_etablissement, statut: r.statut_public_prive, lat: la, lon: lo, dist: haversine(ctx.lat, ctx.lon, la, lo),
+        address: [r.adresse_1, r.code_postal, r.nom_commune].filter(Boolean).join(" "), maternelle: r.ecole_maternelle, elementaire: r.ecole_elementaire, updated: r.date_maj_ligne};
+    }).filter(s => !isNaN(s.dist)).sort((a, b) => a.dist - b.dist);
+    if (!list.length) throw new SourceError(`aucun établissement scolaire à moins de ${fmtDist(CONFIG.radiusSchools)}`, "empty");
+    return {list, updated: list.map(s => s.updated).filter(Boolean).sort().pop()};
+  },
+
+  async water(ctx) {
+    if (!ctx.citycode) throw new SourceError("code commune inconnu");
+    const since = new Date(Date.now() - 365 * 864e5).toISOString().slice(0, 10);
+    const fields = "code_prelevement,date_prelevement,conclusion_conformite_prelevement,conformite_limites_bact_prelevement,conformite_limites_pc_prelevement,nom_distributeur";
+    const j = await getJSON(`${CONFIG.endpoints.hubeau}?code_commune=${mainCityCode(ctx.citycode)}&date_min_prelevement=${since}&size=1000&sort=desc&fields=${fields}`);
+    const byP = new Map();
+    for (const r of j.data || []) if (!byP.has(r.code_prelevement)) byP.set(r.code_prelevement, r);
+    const ps = [...byP.values()].sort((a, b) => String(b.date_prelevement).localeCompare(String(a.date_prelevement)));
+    if (!ps.length) throw new SourceError("aucun prélèvement publié pour cette commune sur 12 mois", "empty");
+    return {samples: ps.length, nonConformBact: ps.filter(p => p.conformite_limites_bact_prelevement === "N").length, nonConformPc: ps.filter(p => p.conformite_limites_pc_prelevement === "N").length,
+      last: {date: ps[0].date_prelevement, conclusion: ps[0].conclusion_conformite_prelevement}, distributor: ps[0].nom_distributeur, updated: ps[0].date_prelevement};
+  }
+};
+
+/* ============================ Orchestration ============================ */
+const state = {ctx: null, results: {}, map: null, layers: {}, demo: false, runId: 0};
+
+async function runSource(id, ctx, runId) {
+  let result;
+  if (state.demo) {
+    result = {status: "sample", data: SAMPLE[id](ctx), reason: "mode démonstration"};
+  } else {
+    try { result = {status: "live", data: await CONNECTORS[id](ctx)}; }
+    catch (e) {
+      const reason = e.message || String(e);
+      if (e.kind === "empty") result = {status: "empty", reason};
+      else if (CONFIG.fallbackToSample) result = {status: "sample", data: SAMPLE[id](ctx), reason, failed: e.kind !== "nosource"};
+      else result = {status: "error", reason};
+    }
+  }
+  result.fetchedAt = new Date();
+  if (runId !== state.runId) return;
+  state.results[id] = result;
+  renderCard(id); renderCoverage(); updateMap(id);
+}
+
+async function startReport(ctx, {demo = false} = {}) {
+  state.ctx = ctx; state.demo = demo; state.results = {}; state.runId++;
+  const runId = state.runId;
+  $("#value").hidden = true;
+  $("#report").hidden = false;
+  $("#h-report").textContent = ctx.label;
+  $("#report-meta").textContent = `${ctx.postcode || ""} ${ctx.city || ""} · code commune ${ctx.citycode || "—"} · rapport généré le ${today()}`.trim();
+  $("#sample-banner").innerHTML = "";
+  $("#att-list").innerHTML = $("#fort-list").innerHTML = `<li class="muted" style="background:none;border:0">Analyse en cours…</li>`;
+  $("#cards").innerHTML = THEMES.map(id => `<article class="card" id="card-${id}" aria-labelledby="t-${id}" aria-busy="true"><h3 id="t-${id}">${esc(THEME_TITLES[id])}</h3><div class="body"><div class="skeleton" aria-hidden="true"></div><p class="sr-only">Chargement…</p></div></article>`).join("");
+  renderCoverage(); renderLicences(); initMap();
+  history.replaceState(null, "", "#" + new URLSearchParams({a: ctx.label, lat: ctx.lat.toFixed(6), lon: ctx.lon.toFixed(6), c: ctx.citycode || "", id: ctx.id || "", pc: ctx.postcode || "", v: ctx.city || "", ...(demo ? {demo: "1"} : {})}).toString());
+  $("#print-url").textContent = "Lien du rapport : " + location.href;
+  $("#h-report").focus();
+  await Promise.allSettled(THEMES.map(id => runSource(id, ctx, runId)));
+  if (runId !== state.runId) return;
+  renderSynthesis();
+}
+
+/* ============================ Rendu : couverture ============================ */
+const ST_LABEL = {live: "✓ Données réelles", sample: "⚠ Exemple", error: "✗ Indisponible", empty: "∅ Pas de donnée", loading: "… Chargement"};
+function renderCoverage() {
+  const items = [["ban", {status: state.demo ? "sample" : "live"}], ...THEMES.map(id => [id, state.results[id] || {status: "loading"}])];
+  $("#coverage").innerHTML = items.map(([id, r]) => `<li><span class="st ${r.status}">${ST_LABEL[r.status]}</span><span><strong>${esc(SOURCES[id].short)}</strong><br><span class="muted">${esc(SOURCES[id].producer)}</span></span></li>`).join("");
+  const samples = THEMES.filter(id => state.results[id] && state.results[id].status === "sample");
+  $("#sample-banner").innerHTML = samples.length ? `<div class="banner sample" role="note"><strong>Attention :</strong> ${samples.length === THEMES.length ? "tout ce rapport utilise" : `${samples.length} bloc(s) utilisent`} des <strong>données d'exemple</strong> (${samples.map(id => esc(SOURCES[id].short)).join(", ")}). Elles servent à montrer le fonctionnement et ne décrivent pas cette adresse.</div>` : "";
+}
+function srcLine(id, r, extra) {
+  const s = SOURCES[id];
+  const upd = extra ? ` · ${extra}` : "";
+  return `<p class="src"><span class="st ${r.status}">${ST_LABEL[r.status]}</span>Source : <a href="${s.url}" target="_blank" rel="noopener">${esc(s.name)}</a> — ${esc(s.producer)} · <a href="${s.licenseUrl}" target="_blank" rel="noopener">${esc(s.license)}</a>${upd} · Consulté le ${fmtDate(r.fetchedAt)}</p>`;
+}
+function renderLicences() {
+  $("#licences").innerHTML = ["ban", ...THEMES].map(id => { const s = SOURCES[id]; return `<li><strong>${esc(s.name)}</strong> (${esc(s.producer)}) — <a href="${s.licenseUrl}" target="_blank" rel="noopener">${esc(s.license)}</a> · <a href="${s.url}" target="_blank" rel="noopener">source</a></li>`; }).join("")
+    + `<li>Fonds de carte : Plan IGN (Géoplateforme, Licence Ouverte 2.0) et © contributeurs OpenStreetMap (ODbL).</li>`;
+}
+
+/* ============================ Rendu : fiches ============================ */
+function renderCard(id) {
+  const r = state.results[id], card = $("#card-" + id);
+  if (!card) return;
+  card.setAttribute("aria-busy", "false");
+  let head = "";
+  if (r.status === "empty") { card.querySelector(".body").innerHTML = `<div class="card-msg empty"><strong>Pas de donnée pour cette adresse :</strong> ${esc(r.reason)}.</div>${EMPTY_HELP[id] || ""}`; card.querySelector(".src")?.remove(); card.insertAdjacentHTML("beforeend", srcLine(id, r)); return; }
+  if (r.status === "error") { card.querySelector(".body").innerHTML = `<div class="card-msg error"><strong>Source indisponible :</strong> ${esc(r.reason)}. Réessayez plus tard ou consultez directement <a href="${SOURCES[id].url}" target="_blank" rel="noopener">${esc(SOURCES[id].name)}</a>.</div>`; card.querySelector(".src")?.remove(); card.insertAdjacentHTML("beforeend", srcLine(id, r)); return; }
+  if (r.status === "sample") head = `<div class="card-msg sample"><strong>Exemple, pas la réalité de cette adresse.</strong> ${r.reason === "mode démonstration" ? "Mode démonstration." : r.failed ? `La source réelle n'a pas répondu (${esc(r.reason)}).` : esc(r.reason) + "."}</div>`;
+  const {html, extra} = RENDER[id](r.data, r);
+  card.querySelector(".body").innerHTML = head + html;
+  card.querySelector(".src")?.remove();
+  card.insertAdjacentHTML("beforeend", srcLine(id, r, extra));
+}
+const EMPTY_HELP = {
+  dvf: `<p class="muted">Peu de ventes dans le rayon, commune non couverte (Alsace-Moselle, Mayotte) ou vente trop récente pour être publiée (délai de 6 à 12 mois).</p>`,
+  dpe: `<p class="muted">Seuls les DPE réalisés depuis juillet 2021 sont publiés ici. Demandez le DPE au vendeur ou au bailleur : il est obligatoire dans l'annonce.</p>`,
+  schools: `<p class="muted">Élargissez la recherche sur <a href="https://www.education.gouv.fr/annuaire" target="_blank" rel="noopener">l'annuaire de l'éducation</a>.</p>`,
+  water: `<p class="muted">Consultez les résultats affichés en mairie ou sur <a href="https://sante.gouv.fr/sante-et-environnement/eaux/eau" target="_blank" rel="noopener">le site du ministère de la Santé</a>.</p>`
+};
+function dpeScale(letter) { return `<div class="dpe-scale" role="img" aria-label="Étiquette énergie ${letter || "inconnue"} sur une échelle de A à G">${"ABCDEFG".split("").map(l => `<span class="dpe-${l}${l === letter ? " on" : ""}" aria-hidden="true">${l}</span>`).join("")}</div>`; }
+
+const RENDER = {
+  dvf(d) {
+    const s = d.sales, apt = s.filter(x => x.type === "Appartement"), mai = s.filter(x => x.type === "Maison");
+    const mAll = median(s.map(x => x.ppm));
+    const ref = new Date(d.updated || Date.now());
+    const y1 = s.filter(x => (ref - new Date(x.date)) / 864e5 <= 365), y0 = s.filter(x => { const g = (ref - new Date(x.date)) / 864e5; return g > 365 && g <= 730; });
+    let trend = null; if (y1.length >= 5 && y0.length >= 5) trend = (median(y1.map(x => x.ppm)) / median(y0.map(x => x.ppm)) - 1) * 100;
+    const recent = [...s].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 8);
+    const html = `
+      <p class="muted" style="margin:0">Prix médian au m² des ventes à moins de ${CONFIG.radiusSales} m</p>
+      <p class="big">${fmtEur(mAll)}<span class="muted" style="font-size:1rem;font-weight:400"> /m²</span></p>
+      <div class="kpis">
+        <div class="kpi"><div class="l">Appartements</div><div class="v">${apt.length ? fmtEur(median(apt.map(x => x.ppm))) : "—"}</div><div class="l">${apt.length} vente(s)</div></div>
+        <div class="kpi"><div class="l">Maisons</div><div class="v">${mai.length ? fmtEur(median(mai.map(x => x.ppm))) : "—"}</div><div class="l">${mai.length} vente(s)</div></div>
+        <div class="kpi"><div class="l">Évolution sur 1 an</div><div class="v">${trend == null ? "—" : (trend > 0 ? "+" : "") + trend.toFixed(1).replace(".", ",") + " %"}</div><div class="l">${trend == null ? "trop peu de ventes" : "médiane 12 derniers mois"}</div></div>
+      </div>
+      <table><caption class="sr-only">Ventes récentes les plus proches</caption><thead><tr><th scope="col">Date</th><th scope="col">Bien</th><th scope="col" class="num">Prix</th><th scope="col" class="num">€/m²</th><th scope="col" class="num">Distance</th></tr></thead>
+      <tbody>${recent.map(x => `<tr><td>${fmtDate(x.date)}</td><td>${esc(x.type)} ${fmtInt(x.surface)} m²${x.rooms ? `, ${x.rooms} p.` : ""}</td><td class="num">${fmtEur(x.price)}</td><td class="num">${fmtInt(x.ppm)}</td><td class="num">${fmtDist(x.dist)}</td></tr>`).join("")}</tbody></table>
+      <p class="muted" style="font-size:.82rem;margin:.4rem 0 0">${s.length} ventes de logements sur ${CONFIG.salesMonths} mois. Ventes groupées et prix aberrants exclus. Les ventes des 6 à 12 derniers mois ne sont pas encore publiées.</p>`;
+    return {html, extra: `Ventes publiées jusqu'au ${fmtDate(d.updated)}`};
+  },
+  dpe(d) {
+    const best = [...d.same].sort((a, b) => String(b.date).localeCompare(String(a.date)))[0];
+    const dist = {}; "ABCDEFG".split("").forEach(l => dist[l] = 0); d.nearby.forEach(x => dist[x.label]++);
+    const n = d.nearby.length, fg = n ? (dist.F + dist.G) / n * 100 : null;
+    const colors = {A: "#008a5e", B: "#33a357", C: "#9dc76c", D: "#f2e33a", E: "#f2b33b", F: "#ec7d2d", G: "#d1281f"};
+    const latest = [...d.nearby, ...d.same].map(x => x.date).filter(Boolean).sort().pop();
+    const html = `
+      ${best ? `<p class="muted" style="margin:0">DPE publié à cette adresse (ou dans le même immeuble)</p>${dpeScale(best.label)}
+        <p style="margin:.2rem 0 .6rem"><strong>Classe ${esc(best.label)}</strong>${best.conso ? ` · ${fmtInt(best.conso)} kWh/m²/an` : ""}${best.ges ? ` · GES ${esc(best.ges)}` : ""}${best.surface ? ` · ${fmtInt(best.surface)} m²` : ""} · établi le ${fmtDate(best.date)}${d.same.length > 1 ? ` <span class="muted">(${d.same.length} DPE dans l'immeuble : vérifiez qu'il s'agit bien du bon lot)</span>` : ""}</p>`
+        : `<div class="card-msg empty">Aucun DPE publié à cette adresse exacte depuis juillet 2021. Demandez-le : il est obligatoire pour vendre ou louer.</div>`}
+      ${n ? `<p class="muted" style="margin:.4rem 0 .2rem">Répartition des ${n} DPE à moins de ${CONFIG.radiusDpe} m</p>
+        <div class="bar" role="img" aria-label="${"ABCDEFG".split("").map(l => `${l} : ${dist[l]}`).join(", ")}">${"ABCDEFG".split("").map(l => dist[l] ? `<span style="width:${dist[l] / n * 100}%;background:${colors[l]}" title="${l} : ${dist[l]}"></span>` : "").join("")}</div>
+        <p style="font-size:.9rem;margin:.2rem 0">${"ABCDEFG".split("").map(l => `${l} : ${dist[l]}`).join(" · ")}</p>
+        <p style="margin:.3rem 0 0"><strong>${fg.toFixed(0)} %</strong> de « passoires » (F ou G) dans le voisinage.</p>` : ""}
+      <details class="more"><summary>Ce que dit la loi</summary><ul class="plain"><li>Logements classés G : interdits à la location depuis le 1er janvier 2025 (nouveaux baux).</li><li>Classe F : interdits à partir de 2028 ; classe E : à partir de 2034.</li><li>Un audit énergétique est obligatoire pour vendre une maison classée E, F ou G.</li></ul></details>`;
+    return {html, extra: `DPE le plus récent : ${fmtDate(latest)}`};
+  },
+  georisques(d) {
+    const row = (x) => `<li><span class="pill ${x.present ? "bad" : "ok"}">${x.present ? "Concerné" : "Non"}</span> <strong>${esc(x.label)}</strong><br><span class="muted" style="font-size:.85rem">${esc(x.statut)}</span></li>`;
+    const pres = (l) => l.filter(x => x.present), abs = (l) => l.filter(x => !x.present);
+    const html = `
+      <p style="margin:0 0 .4rem"><strong>${pres(d.natural).length}</strong> risque(s) naturel(s) et <strong>${pres(d.tech).length}</strong> risque(s) technologique(s) signalés à cette adresse ou dans la commune.</p>
+      <ul class="plain" style="list-style:none;padding:0;display:grid;gap:.4rem">${[...pres(d.natural), ...pres(d.tech)].map(row).join("") || "<li>Aucun risque majeur recensé.</li>"}</ul>
+      ${d.catnatTotal != null ? `<p style="margin:.6rem 0 .2rem"><strong>${d.catnatTotal}</strong> arrêté(s) de catastrophe naturelle dans la commune depuis 1982.</p>
+        ${d.catnat.length ? `<ul class="plain">${d.catnat.slice(0, 4).map(c => `<li>${fmtDate(c.date)} : ${esc(c.label)}</li>`).join("")}</ul>` : ""}` : `<p class="muted">Arrêtés CatNat : non disponibles.</p>`}
+      <details class="more"><summary>Risques non concernés (${abs(d.natural).length + abs(d.tech).length})</summary><ul class="plain">${[...abs(d.natural), ...abs(d.tech)].map(x => `<li>${esc(x.label)} : ${esc(x.statut)}</li>`).join("")}</ul></details>
+      <p style="margin:.5rem 0 0;font-size:.9rem"><a href="${esc(d.url)}" target="_blank" rel="noopener">Rapport complet sur Géorisques</a></p>`;
+    return {html, extra: "Base mise à jour en continu par l'État"};
+  },
+  noise(d) {
+    const lvl = noiseLevel(d);
+    const LBL = {motorway: "Autoroute / voie rapide", primary: "Axe principal", secondary: "Axe secondaire", rail: "Voie ferrée", tram: "Tramway"};
+    const nearest = {}; d.ways.forEach(w => { if (!nearest[w.type] || w.dist < nearest[w.type].dist) nearest[w.type] = w; });
+    const items = Object.values(nearest).sort((a, b) => a.dist - b.dist);
+    const html = `
+      <p class="muted" style="margin:0">Exposition probable au bruit des transports (estimation)</p>
+      <p class="big"><span class="pill ${lvl.cls}" style="font-size:1.1rem">${lvl.label}</span></p>
+      <ul class="plain">${items.map(w => `<li>${esc(LBL[w.type] || w.type)}${w.name ? ` (${esc(w.name)})` : ""} à <strong>${fmtDist(w.dist)}</strong></li>`).join("") || `<li>Aucun grand axe routier ni voie ferrée à moins de ${CONFIG.radiusNoise} m.</li>`}
+      ${d.airports.map(a => `<li>Aéroport ${esc(a.name)} à <strong>${fmtDist(a.dist)}</strong></li>`).join("")}</ul>
+      <p class="muted" style="font-size:.82rem;margin:.4rem 0 0">Estimation fondée sur la distance aux infrastructures. Pour les niveaux en décibels, consultez les cartes de bruit stratégiques de votre département et le plan d'exposition au bruit des aéroports.</p>`;
+    return {html, extra: d.osmDate ? `Données OSM au ${fmtDate(d.osmDate)}` : "Données OSM"};
+  },
+  arcep(d) {
+    const html = `
+      <div class="kpis"><div class="kpi"><div class="l">Fibre (FttH)</div><div class="v">${d.fibre.eligible ? "Raccordable" : "Non raccordable"}</div><div class="l">${d.fibre.operators} opérateur(s)</div></div>
+      <div class="kpi"><div class="l">Cuivre (ADSL/VDSL)</div><div class="v">≤ ${d.dsl.maxMbps} Mbit/s</div></div></div>
+      <table><caption class="sr-only">Couverture mobile par opérateur</caption><thead><tr><th scope="col">Opérateur</th><th scope="col">4G à l'extérieur</th><th scope="col">5G</th></tr></thead><tbody>${d.mobile.map(m => `<tr><td>${esc(m.op)}</td><td>${esc(m.g4)}</td><td>${m.g5 ? "Oui" : "Non"}</td></tr>`).join("")}</tbody></table>
+      <p style="font-size:.9rem;margin:.5rem 0 0">Vérifiez l'éligibilité réelle sur <a href="https://maconnexioninternet.arcep.fr" target="_blank" rel="noopener">Ma connexion internet</a>.</p>`;
+    return {html, extra: "Arcep publie ces données chaque trimestre"};
+  },
+  schools(d) {
+    const isPrim = (s) => /ecole|école/i.test(s.type || ""), isCol = (s) => /coll/i.test(s.type || ""), isLyc = (s) => /lyc/i.test(s.type || "");
+    const near = (f) => d.list.filter(f)[0];
+    const p = near(isPrim), c = near(isCol), l = near(isLyc);
+    const kpi = (t, s) => `<div class="kpi"><div class="l">${t} la plus proche</div><div class="v">${s ? fmtDist(s.dist) : "—"}</div><div class="l">${s ? esc(s.name) : `aucune à moins de ${fmtDist(CONFIG.radiusSchools)}`}</div></div>`;
+    const html = `<div class="kpis">${kpi("École", p)}${kpi("Collège", c).replace("la plus proche", "le plus proche")}${kpi("Lycée", l).replace("la plus proche", "le plus proche")}</div>
+      <table><caption class="sr-only">Établissements à proximité</caption><thead><tr><th scope="col">Établissement</th><th scope="col">Statut</th><th scope="col" class="num">Distance</th></tr></thead>
+      <tbody>${d.list.slice(0, 8).map(s => `<tr><td>${esc(s.name)}<br><span class="muted" style="font-size:.8rem">${esc(s.type || "")}</span></td><td>${esc(s.statut || "—")}</td><td class="num">${fmtDist(s.dist)}</td></tr>`).join("")}</tbody></table>
+      <p class="muted" style="font-size:.82rem;margin:.4rem 0 0">${d.list.length} établissement(s) à moins de ${fmtDist(CONFIG.radiusSchools)}, à vol d'oiseau. L'affectation dépend de la carte scolaire de la mairie.</p>`;
+    return {html, extra: d.updated ? `Annuaire mis à jour le ${fmtDate(d.updated)}` : "Annuaire mis à jour quotidiennement"};
+  },
+  water(d) {
+    const nc = d.nonConformBact + d.nonConformPc;
+    const html = `
+      <p class="big"><span class="pill ${nc ? "bad" : "ok"}" style="font-size:1.1rem">${nc ? `${nc} non-conformité(s)` : "100 % conforme"}</span></p>
+      <p style="margin:.3rem 0">${d.samples} prélèvement(s) analysé(s) sur les 12 derniers mois dans la commune${nc ? ` : ${d.nonConformBact} non conforme(s) en bactériologie, ${d.nonConformPc} en physico-chimie` : ""}.</p>
+      <p style="margin:.3rem 0"><strong>Dernier contrôle (${fmtDate(d.last.date)}) :</strong> ${esc(d.last.conclusion || "conclusion non renseignée")}</p>
+      ${d.distributor ? `<p class="muted" style="font-size:.85rem;margin:.2rem 0 0">Distributeur : ${esc(d.distributor)}</p>` : ""}`;
+    return {html, extra: `Dernier prélèvement : ${fmtDate(d.updated)}`};
+  }
+};
+function noiseLevel(d) {
+  const m = (t) => Math.min(...d.ways.filter(w => w.type === t).map(w => w.dist), Infinity);
+  const air = Math.min(...d.airports.map(a => a.dist), Infinity);
+  if (m("motorway") < 200 || m("rail") < 100 || air < 3000) return {label: "Élevée", cls: "bad", score: 2};
+  if (m("motorway") < 400 || m("primary") < 60 || m("rail") < 250 || m("secondary") < 25 || m("tram") < 30) return {label: "Modérée", cls: "warn", score: 1};
+  return {label: "Faible", cls: "ok", score: 0};
+}
+
+/* ============================ Synthèse ============================ */
+function renderSynthesis() {
+  const att = [], fort = [];
+  const R = state.results;
+  const add = (list, id, text, detail) => list.push({id, text, detail, sample: R[id] && R[id].status === "sample"});
+  // Énergie
+  if (R.dpe?.data) {
+    const d = R.dpe.data, best = [...d.same].sort((a, b) => String(b.date).localeCompare(String(a.date)))[0];
+    if (best && "FG".includes(best.label)) add(att, "dpe", `DPE classé ${best.label} : logement très énergivore`, best.label === "G" ? "Interdit à la location (nouveaux baux) depuis 2025 ; prévoir des travaux" : "Interdit à la location à partir de 2028 ; prévoir des travaux");
+    else if (best && "E".includes(best.label)) add(att, "dpe", "DPE classé E : interdit à la location à partir de 2034", "Factures élevées ; budgétez la rénovation");
+    else if (best && "AB".includes(best.label)) add(fort, "dpe", `DPE classé ${best.label} : très bonne performance énergétique`, "Factures maîtrisées, pas de contrainte de location");
+    else if (!best) add(att, "dpe", "Aucun DPE publié à cette adresse", "Exigez le DPE du logement avant de vous engager");
+    const n = d.nearby.length, fg = n ? d.nearby.filter(x => "FG".includes(x.label)).length / n : 0;
+    if (n >= 10 && fg >= 0.25) add(att, "dpe", `${Math.round(fg * 100)} % de passoires énergétiques (F/G) dans le voisinage`, "Bâti ancien probable : vérifiez isolation et chauffage");
+  }
+  // Prix
+  if (R.dvf?.data) {
+    const s = R.dvf.data.sales, m = median(s.map(x => x.ppm));
+    add(fort, "dvf", `${s.length} ventes réelles comparables à moins de ${CONFIG.radiusSales} m`, `Prix médian ${fmtEur(m)}/m² : une base solide pour négocier`);
+    if (s.length < 5) add(att, "dvf", "Peu de ventes de référence dans le quartier", "Le prix est plus difficile à évaluer : comparez plus largement");
+  } else if (R.dvf?.status === "empty") add(att, "dvf", "Pas de ventes de référence publiées", R.dvf.reason);
+  // Risques
+  if (R.georisques?.data) {
+    const d = R.georisques.data;
+    const important = ["inondation", "risqueCotier", "mouvementTerrain", "retraitGonflementArgile", "reculTraitCote", "feuForet", "avalanche", "icpe", "nucleaire", "pollutionSols", "ruptureBarrage", "risqueMinier", "canalisationsMatieresDangereuses", "radon", "seisme"];
+    const level = (x) => { const m = String(x.statut).match(/(\d)/); return m ? +m[1] : null; };
+    const significant = (x) => x.key === "seisme" ? (level(x) ?? x.level ?? 3) >= 3 : x.key === "radon" ? (level(x) ?? 3) >= 3 : true; // séisme : zones 3 à 5 ; radon : catégorie 3
+    const pres = [...d.natural, ...d.tech].filter(x => x.present && important.includes(x.key) && significant(x));
+    pres.forEach(x => add(att, "georisques", `Risque : ${x.label}`, x.statut));
+    if (!pres.length) add(fort, "georisques", "Aucun risque naturel ou technologique majeur signalé", "Selon Géorisques à cette adresse");
+    if (d.catnatTotal >= 5) add(att, "georisques", `${d.catnatTotal} arrêtés de catastrophe naturelle dans la commune`, "Interrogez le vendeur sur les sinistres indemnisés (obligatoire dans l'état des risques)");
+  }
+  // Bruit
+  if (R.noise?.data) {
+    const l = noiseLevel(R.noise.data);
+    if (l.score === 2) add(att, "noise", "Exposition probable au bruit élevée", "Grand axe, voie ferrée ou aéroport tout proche : visitez aux heures de pointe");
+    else if (l.score === 1) add(att, "noise", "Exposition probable au bruit modérée", "Vérifiez l'orientation des pièces et le vitrage");
+    else add(fort, "noise", "Environnement probablement calme", `Aucun grand axe à moins de ${CONFIG.radiusNoise} m`);
+  }
+  // Connexion
+  if (R.arcep?.data) {
+    if (R.arcep.data.fibre.eligible) add(fort, "arcep", "Fibre optique raccordable", `${R.arcep.data.fibre.operators} opérateurs`);
+    else add(att, "arcep", "Fibre non raccordable", "Télétravail : vérifiez les alternatives (4G/5G fixe, satellite)");
+  }
+  // Écoles
+  if (R.schools?.data) {
+    const prim = R.schools.data.list.find(s => /ecole|école/i.test(s.type || ""));
+    if (prim && prim.dist <= 500) add(fort, "schools", `École à ${fmtDist(prim.dist)}`, prim.name);
+    const col = R.schools.data.list.find(s => /coll/i.test(s.type || ""));
+    if (col && col.dist <= 1000) add(fort, "schools", `Collège à ${fmtDist(col.dist)}`, col.name);
+  } else if (R.schools?.status === "empty") add(att, "schools", `Aucun établissement scolaire à moins de ${fmtDist(CONFIG.radiusSchools)}`, "Prévoyez les trajets");
+  // Eau
+  if (R.water?.data) {
+    const nc = R.water.data.nonConformBact + R.water.data.nonConformPc;
+    if (nc) add(att, "water", `Eau du robinet : ${nc} prélèvement(s) non conforme(s) sur 12 mois`, "Consultez le détail des paramètres en mairie ou auprès de l'ARS");
+    else add(fort, "water", "Eau du robinet conforme sur les 12 derniers mois", `${R.water.data.samples} prélèvements contrôlés`);
+  }
+  const li = (x) => `<li>${esc(x.text)}${x.sample ? `<span class="tag">exemple</span>` : ""}<small>${esc(x.detail || "")} · ${esc(SOURCES[x.id].short)}</small></li>`;
+  $("#att-list").innerHTML = att.map(li).join("") || `<li>Aucun point d'attention détecté dans les sources disponibles.</li>`;
+  $("#fort-list").innerHTML = fort.map(li).join("") || `<li>Aucun point fort détecté dans les sources disponibles.</li>`;
+}
+
+/* ============================ Carte ============================ */
+const LAYER_DEFS = {
+  dvf: {label: "Ventes (DVF)", color: "#0b4f6c"}, dpe: {label: "DPE voisins", color: "#ec7d2d"},
+  schools: {label: "Écoles", color: "#7c3aed"}, noise: {label: "Axes bruyants", color: "#b91c1c"}
+};
+function initMap() {
+  const el = $("#map");
+  if (typeof L === "undefined") { el.innerHTML = `<div class="card-msg error" style="margin:1rem">La carte n'a pas pu être chargée (bibliothèque Leaflet injoignable). Toutes les informations restent disponibles dans les fiches ci-dessous.</div>`; el.style.height = "auto"; return; }
+  const {lat, lon} = state.ctx;
+  if (!state.map) {
+    state.map = L.map(el, {scrollWheelZoom: false, keyboard: true});
+    const ign = L.tileLayer("https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=GEOGRAPHICALGRIDSYSTEMS.PLANIGNV2&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/png&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}", {maxZoom: 19, attribution: "Plan IGN – Géoplateforme"});
+    const osm = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {maxZoom: 19, attribution: "© contributeurs OpenStreetMap"});
+    ign.addTo(state.map);
+    L.control.layers({"Plan IGN": ign, "OpenStreetMap": osm}, null, {position: "topright"}).addTo(state.map);
+    $("#layer-toggles").innerHTML = Object.entries(LAYER_DEFS).map(([k, v]) => `<label><input type="checkbox" checked data-layer="${k}"> ${esc(v.label)}</label>`).join("");
+    $("#layer-toggles").addEventListener("change", (e) => { const k = e.target.dataset.layer; const g = state.layers[k]; if (!g) return; e.target.checked ? g.addTo(state.map) : state.map.removeLayer(g); });
+    $("#legend").innerHTML = `<span><i style="background:#111"></i>Adresse</span>` + Object.values(LAYER_DEFS).map(v => `<span><i style="background:${v.color}"></i>${esc(v.label)}</span>`).join("") + `<span>Cercle : rayon de ${CONFIG.radiusSales} m</span>`;
+  }
+  Object.values(state.layers).forEach(g => state.map.removeLayer(g)); state.layers = {};
+  if (state.base) state.base.forEach(x => state.map.removeLayer(x));
+  state.base = [L.circle([lat, lon], {radius: CONFIG.radiusSales, color: "#0b4f6c", weight: 1, fillOpacity: .04}).addTo(state.map),
+    L.circleMarker([lat, lon], {radius: 9, color: "#fff", weight: 3, fillColor: "#111", fillOpacity: 1}).addTo(state.map).bindPopup(`<strong>${esc(state.ctx.label)}</strong>`)];
+  state.map.setView([lat, lon], 16);
+  setTimeout(() => state.map.invalidateSize(), 50);
+}
+function updateMap(id) {
+  if (!state.map || !LAYER_DEFS[id]) return;
+  const r = state.results[id]; if (!r || !r.data) return;
+  const g = L.layerGroup(), tag = r.status === "sample" ? " <em>(exemple)</em>" : "";
+  const dot = (la, lo, color, html) => la != null && lo != null && L.circleMarker([la, lo], {radius: 6, color: "#fff", weight: 1.5, fillColor: color, fillOpacity: .9}).bindPopup(html + tag).addTo(g);
+  if (id === "dvf") r.data.sales.forEach(s => dot(s.lat, s.lon, LAYER_DEFS.dvf.color, `<strong>${fmtEur(s.price)}</strong> – ${esc(s.type)} ${fmtInt(s.surface)} m²<br>${fmtInt(s.ppm)} €/m² · ${fmtDate(s.date)}<br>${esc(s.address)}`));
+  if (id === "dpe") { const C = {A: "#008a5e", B: "#33a357", C: "#9dc76c", D: "#f2e33a", E: "#f2b33b", F: "#ec7d2d", G: "#d1281f"}; r.data.nearby.forEach(s => dot(s.lat, s.lon, C[s.label], `DPE <strong>${esc(s.label)}</strong>${s.conso ? ` – ${fmtInt(s.conso)} kWh/m²/an` : ""}<br>${esc(s.address || "")}<br>${fmtDate(s.date)}`)); }
+  if (id === "schools") r.data.list.forEach(s => dot(s.lat, s.lon, LAYER_DEFS.schools.color, `<strong>${esc(s.name)}</strong><br>${esc(s.type || "")} · ${esc(s.statut || "")}<br>${fmtDist(s.dist)}`));
+  if (id === "noise") { r.data.ways.forEach(w => w.geom && L.polyline(w.geom.map(p => [p.lat, p.lon]), {color: LAYER_DEFS.noise.color, weight: w.type === "motorway" ? 6 : 4, opacity: .7}).bindPopup(`${esc(w.name || w.type)} – ${fmtDist(w.dist)}${tag}`).addTo(g)); r.data.airports.forEach(a => dot(a.lat, a.lon, LAYER_DEFS.noise.color, `Aéroport ${esc(a.name)} – ${fmtDist(a.dist)}`)); }
+  state.layers[id] = g;
+  const cb = document.querySelector(`[data-layer="${id}"]`);
+  if (!cb || cb.checked) g.addTo(state.map);
+}
+
+/* ============================ Autocomplétion ============================ */
+const input = $("#addr"), lb = $("#suggestions");
+let sugg = [], active = -1, debounceT, reqSeq = 0;
+function setMsg(html, kind = "info") { $("#search-msg").innerHTML = html ? `<div class="msg ${kind}">${html}</div>` : ""; }
+function closeList() { lb.hidden = true; input.setAttribute("aria-expanded", "false"); input.removeAttribute("aria-activedescendant"); active = -1; }
+function renderList() {
+  if (!sugg.length) return closeList();
+  lb.innerHTML = sugg.map((s, i) => `<li id="opt-${i}" role="option" aria-selected="${i === active}" data-i="${i}">${esc(s.label)}<small>${esc(s.type === "housenumber" ? "Adresse précise" : s.type === "street" ? "Rue (sans numéro)" : "Lieu / commune")}</small></li>`).join("");
+  lb.hidden = false; input.setAttribute("aria-expanded", "true");
+  if (active >= 0) { input.setAttribute("aria-activedescendant", "opt-" + active); $("#opt-" + active).scrollIntoView({block: "nearest"}); } else input.removeAttribute("aria-activedescendant");
+}
+input.addEventListener("input", () => {
+  clearTimeout(debounceT); const q = input.value.trim();
+  if (q.length < 3) { sugg = []; closeList(); return; }
+  debounceT = setTimeout(async () => {
+    const seq = ++reqSeq;
+    try { const r = await banSearch(q); if (seq !== reqSeq) return; sugg = r; active = -1; renderList(); setMsg(r.length ? "" : "Aucune adresse trouvée. Vérifiez l'orthographe ou ajoutez la commune."); }
+    catch (e) { if (seq !== reqSeq) return; sugg = []; closeList(); setMsg(`Le service d'adresses (Base Adresse Nationale) ne répond pas : ${esc(e.message)}. <button type="button" class="chip" data-run-demo>Voir la démo hors ligne</button>`, "error"); }
+  }, 250);
+});
+input.addEventListener("keydown", (e) => {
+  if (lb.hidden && e.key === "ArrowDown" && sugg.length) { renderList(); }
+  if (lb.hidden) return;
+  if (e.key === "ArrowDown") { e.preventDefault(); active = (active + 1) % sugg.length; renderList(); }
+  else if (e.key === "ArrowUp") { e.preventDefault(); active = (active - 1 + sugg.length) % sugg.length; renderList(); }
+  else if (e.key === "Enter" && active >= 0) { e.preventDefault(); choose(sugg[active]); }
+  else if (e.key === "Escape") { closeList(); }
+});
+input.addEventListener("blur", () => setTimeout(closeList, 150));
+lb.addEventListener("mousedown", (e) => { const li = e.target.closest("li[data-i]"); if (li) { e.preventDefault(); choose(sugg[+li.dataset.i]); } });
+function choose(s) {
+  input.value = s.label; closeList(); setMsg("");
+  if (s.type === "municipality") setMsg("Adresse peu précise (commune entière) : les résultats porteront sur le centre de la commune.", "info");
+  startReport(s);
+}
+$("#search-form").addEventListener("submit", async (e) => {
+  e.preventDefault(); const q = input.value.trim();
+  if (q.length < 3) { setMsg("Saisissez une adresse (au moins 3 caractères).", "error"); input.focus(); return; }
+  if (sugg.length && sugg[Math.max(0, active)].label === q) return choose(sugg[Math.max(0, active)]);
+  setMsg("Recherche de l'adresse…");
+  try { const r = await banSearch(q, 1); if (!r.length) return setMsg("Adresse introuvable dans la Base Adresse Nationale. Précisez le numéro, la rue et la commune.", "error"); choose(r[0]); }
+  catch (err) { setMsg(`Le service d'adresses ne répond pas : ${esc(err.message)}. <button type="button" class="chip" data-run-demo>Voir la démo hors ligne</button>`, "error"); }
+});
+document.querySelectorAll("[data-example]").forEach(b => b.addEventListener("click", () => { input.value = b.dataset.example; $("#search-form").requestSubmit(); }));
+const DEMO_CTX = {label: "Adresse de démonstration, 80000 Amiens", city: "Amiens", postcode: "80000", citycode: "80021", id: "", lat: 49.8941, lon: 2.2958, type: "housenumber"};
+document.addEventListener("click", (e) => { if (e.target.closest("[data-run-demo]") || e.target.id === "demo-btn") startReport(DEMO_CTX, {demo: true}); });
+
+/* ============================ Actions rapport ============================ */
+$("#print-btn").addEventListener("click", () => window.print());
+$("#new-btn").addEventListener("click", () => { $("#report").hidden = true; $("#value").hidden = false; history.replaceState(null, "", location.pathname); input.value = ""; input.focus(); window.scrollTo(0, 0); });
+$("#share-btn").addEventListener("click", async () => {
+  const url = location.href, msg = $("#share-msg");
+  try {
+    if (navigator.share) { await navigator.share({title: "Ce logement, vraiment – " + state.ctx.label, url}); return; }
+    await navigator.clipboard.writeText(url); msg.innerHTML = `<div class="msg info">Lien copié. Il recalcule le rapport avec les données les plus récentes à chaque ouverture.</div>`;
+  } catch (e) { if (e.name === "AbortError") return; msg.innerHTML = `<div class="msg info">Copiez ce lien : <input readonly value="${esc(url)}" style="width:100%;font:inherit;margin-top:.3rem" onfocus="this.select()" aria-label="Lien du rapport"></div>`; }
+});
+
+/* ============================ Écran d'accueil ============================ */
+$("#sources-grid").innerHTML = ["ban", ...THEMES].map(id => `<li><strong>${esc(SOURCES[id].short)}</strong><span>${esc(SOURCES[id].what)} · ${esc(SOURCES[id].producer)}</span></li>`).join("");
+
+// Ouverture d'un lien partagé
+(function fromHash() {
+  if (!location.hash) return;
+  const p = new URLSearchParams(location.hash.slice(1));
+  const lat = parseFloat(p.get("lat")), lon = parseFloat(p.get("lon"));
+  if (isNaN(lat) || isNaN(lon) || lat < -90 || lat > 90 || lon < -180 || lon > 180) return;
+  const ctx = {label: (p.get("a") || "Adresse partagée").slice(0, 200), lat, lon, citycode: /^[0-9AB]{5}$/.test(p.get("c") || "") ? p.get("c") : "", id: (p.get("id") || "").slice(0, 40), postcode: (p.get("pc") || "").slice(0, 5), city: (p.get("v") || "").slice(0, 80)};
+  input.value = ctx.label;
+  startReport(ctx, {demo: p.get("demo") === "1"});
+})();
+</script>
+</body>
+</html>
