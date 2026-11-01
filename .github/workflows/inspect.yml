@@ -1,0 +1,24 @@
+name: Inspection de sources (temporaire)
+on: workflow_dispatch
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Sirene near_point (CORS + format)
+        run: |
+          curl -sS -D - -o re.json -H "Origin: https://fbis64220.github.io" "https://recherche-entreprises.api.gouv.fr/near_point?lat=49.8941&long=2.2958&radius=1&activite_principale=47.11D,47.11F,47.11C,47.11B&per_page=3" | grep -iE "^HTTP|access-control|ratelimit|retry"
+          head -c 2500 re.json; echo
+          curl -sS -o /dev/null -w "preflight %{http_code}\n" -X OPTIONS -H "Origin: https://fbis64220.github.io" -H "Access-Control-Request-Method: GET" "https://recherche-entreprises.api.gouv.fr/near_point?lat=49.8941&long=2.2958&radius=1"
+      - name: transport.data.gouv.fr – jeux d'arrêts consolidés
+        run: |
+          curl -sS "https://transport.data.gouv.fr/api/datasets" -o ds.json; ls -la ds.json
+          python3 - <<'PY'
+          import json
+          d=json.load(open('ds.json'))
+          for x in d:
+              t=(x.get('title') or '')+' '+(x.get('slug') or '')
+              if any(k in t.lower() for k in ['arrêt','arret','stops','consolid','points d']):
+                  print('#', x.get('slug'), '|', x.get('title'), '|', x.get('type'))
+                  for r in x.get('resources',[])[:8]:
+                      print('   ', r.get('title'), r.get('format'), r.get('original_url') or r.get('url'), r.get('filesize'))
+          PY
