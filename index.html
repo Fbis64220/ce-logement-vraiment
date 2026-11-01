@@ -591,7 +591,7 @@ const CONNECTORS = {
     const tri = (R.tri?.data || [])[0], azi = (R.azi?.data || [])[0];
     const inondCommune = communeRisks.some(l => /inondation/i.test(l));
     if (R.tri || R.azi || R.risques) {
-      const st = tri ? `Territoire à risque important d'inondation (TRI ${tri.libelle_tri})` : azi ? `Commune couverte par l'atlas des zones inondables « ${azi.libelle_azi} »` : inondCommune ? "Risque d'inondation recensé dans la commune" : "Pas de risque d'inondation recensé dans la commune";
+      const st = tri ? `Territoire à risque important d'inondation (TRI ${String(tri.libelle_tri).replace(/^TRI\s+/i, "")})` : azi ? `Commune couverte par l'atlas des zones inondables « ${azi.libelle_azi} »` : inondCommune ? "Risque d'inondation recensé dans la commune" : "Pas de risque d'inondation recensé dans la commune";
       add("nat", "inondation", "Inondation", !!(tri || azi || inondCommune), st, tri || azi || inondCommune);
     }
     if (R.rga && R.rga.codeExposition != null) { const c = +R.rga.codeExposition; add("nat", "argiles", "Retrait-gonflement des argiles", c >= 1, R.rga.exposition || `Exposition ${c}`, c >= 2, c); }
@@ -997,6 +997,7 @@ input.addEventListener("keydown", (e) => {
 input.addEventListener("blur", () => setTimeout(closeList, 150));
 lb.addEventListener("mousedown", (e) => { const li = e.target.closest("li[data-i]"); if (li) { e.preventDefault(); choose(sugg[+li.dataset.i]); } });
 function choose(s) {
+  clearTimeout(debounceT); reqSeq++; sugg = []; // ignore les suggestions encore en vol
   input.value = s.label; closeList(); setMsg("");
   if (s.type === "municipality") setMsg("Adresse peu précise (commune entière) : les résultats porteront sur le centre de la commune.", "info");
   startReport(s);
