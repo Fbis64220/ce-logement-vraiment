@@ -35,10 +35,11 @@ Le test de fumée hors ligne couvre trois scénarios : le réseau coupé (chaque
 ## Fonctionnalités (MVP)
 
 1. **Adresse** : autocomplétion BAN (combobox accessible, navigation ↑ ↓, Entrée, Échap), puis géocodage.
-2. **Fiches par thème** : prix, énergie, risques, bruit, connexion, écoles, eau, avec rendu progressif.
-3. **Points d'attention et points forts** : des règles explicites, et chaque point renvoie à sa source.
-4. **Carte** Leaflet : fond Plan IGN ou OSM, quatre couches activables (ventes, DPE, écoles, axes bruyants).
-5. **Partage et impression** : lien `#lat=…&lon=…` qui recalcule le rapport à jour, `navigator.share` sur mobile, mise en page imprimable / PDF.
+2. **« En bref »** : 8 chiffres clés colorés (prix au m², DPE, risques, bruit, arrêt, supermarché, école, fibre), chacun relié à sa fiche.
+3. **Fiches par thème**, regroupées en trois sections : *Le bien et son marché* (prix, DPE), *Environnement et risques* (risques, bruit, eau), *Vie quotidienne* (transports en commun, commerces alimentaires, écoles, connexion). Le rendu est progressif et un menu de navigation reste visible en haut d'écran.
+4. **Points d'attention et points forts** : des règles explicites, et chaque point renvoie à sa source.
+5. **Carte** Leaflet : fond Plan IGN ou OSM, sept couches activables (ventes, DPE, écoles, axes bruyants, industries et sites pollués, transports, commerces).
+6. **Partage et impression** : lien `#lat=…&lon=…` qui recalcule le rapport à jour, `navigator.share` sur mobile, mise en page imprimable / PDF.
 
 ## Sources de données
 
@@ -52,6 +53,8 @@ Toutes les sources ci-dessous ont été **vérifiées contre les vraies API le 0
 | Risques | **Géorisques API v1 détaillée** : `gaspar/risques`, `gaspar/tri`, `gaspar/azi`, `zonage_sismique`, `rga`, `radon`, `installations_classees`, `ssp`, `cavites`, `mvt`, `gaspar/catnat` | JSON | Ne remplace pas l'état des risques (ERP) officiel | Licence Ouverte 2.0 |
 | Bruit | **BD TOPO® IGN** (routes d'importance 1 à 3, voies ferrées en surface) et **PEB DGAC**, via le WFS `data.geopf.fr/wfs/ows` | GeoJSON | **Estimation** fondée sur la distance aux infrastructures, pas des décibels | Licence Ouverte 2.0 |
 | Connexion | **Arcep – Ma connexion internet**, statistiques communales, converties en `data/arcep/<dep>.json` | JSON (précalculé) | Échelle de la commune, pas de l'adresse ; mise à jour trimestrielle | Licence Ouverte 2.0 |
+| Transports | **Arrêts GTFS** de tous les réseaux publiés sur transport.data.gouv.fr (`/api/gtfs-stops?south=…&north=…&west=…&east=…`) et **gares, stations de métro et de tram** de la BD TOPO (WFS Géoplateforme) | GeoJSON | Seuls les réseaux qui publient leurs horaires apparaissent ; fréquences non prises en compte ; arrêts dédoublonnés par nom | Licence Ouverte 2.0 / ODbL selon le réseau |
+| Commerces | **BPE 2025 de l'INSEE** (supermarchés, hypermarchés, supérettes, épiceries, boulangeries), convertie en `data/commerces/<dep>.json` | JSON (précalculé) | Photographie annuelle ; commerces à géolocalisation imprécise exclus (9 488 sur 101 028) ; département voisin non inclus | Licence Ouverte 2.0 |
 | Écoles | Annuaire de l'éducation (Opendatasoft v2.1) : `within_distance(position, …)` | JSON | Vol d'oiseau, la carte scolaire n'est pas prise en compte | Licence Ouverte 2.0 |
 | Eau | Hub'Eau `qualite_eau_potable/resultats_dis?code_commune=` | JSON | Échelle de la commune, pas du réseau précis | Licence Ouverte 2.0 |
 | Fonds de carte | Plan IGN (Géoplateforme WMTS), OSM | Tuiles | — | Licence Ouverte 2.0 / ODbL |
@@ -63,7 +66,18 @@ Toutes les sources ci-dessous ont été **vérifiées contre les vraies API le 0
 - **Overpass (OpenStreetMap)** : les serveurs publics sont saturés ou injoignables. Il est remplacé par la BD TOPO de l'IGN.
 - **Dates CatNat** au format `jj/mm/aaaa` : converties avant le tri.
 
-### Données Arcep précalculées
+### Données précalculées par GitHub Actions
+
+Deux sources ne sont pas lisibles directement par un navigateur. La première est trop volumineuse : la BPE de l'INSEE pèse environ 200 Mo. La seconde est servie sans CORS : les fichiers de l'Arcep. Un workflow mensuel les convertit en petits fichiers JSON par département, servis par GitHub Pages sur le même domaine que le site :
+
+| Workflow | Script | Source | Sortie |
+|---|---|---|---|
+| `commerces.yml` (le 4 du mois) | `scripts/build_commerces.py` | `BPE<aa>.parquet` le plus récent de la page INSEE 8217525 | `data/commerces/` |
+| `arcep.yml` (le 3 du mois) | `scripts/build_arcep.py` | statistiques communales « Ma connexion internet » | `data/arcep/` |
+
+Les deux scripts refusent de publier si le fichier source semble incomplet. Le workflow `test-live.yml` lance le rapport complet sur plusieurs adresses dans un vrai navigateur, contre les API réelles, et publie des captures d'écran.
+
+#### Détail Arcep
 
 Le workflow `.github/workflows/arcep.yml` (le 3 de chaque mois, ou à la demande depuis l'onglet **Actions**) lance `scripts/build_arcep.py`. Le script télécharge `commune_techno.csv` et `commune_debit.csv`, vérifie leurs colonnes et refuse de publier s'il manque des départements. Il écrit ensuite un JSON par département dans `data/arcep/` et le commite. GitHub Pages sert ces fichiers sur le même domaine que le site.
 
@@ -88,6 +102,7 @@ Contrastes AA, focus visible, lien d'évitement, combobox ARIA (`aria-activedesc
 
 - Les ventes DVF sont limitées à la commune de l'adresse : une adresse en limite de commune n'aura pas les ventes de la commune voisine.
 - Le bruit est une estimation (distance aux axes). Les cartes de bruit stratégiques officielles ne sont publiées sur la Géoplateforme que pour un seul département (Ardennes) au 01/11/2026.
+- Transports et commerces : distances à vol d'oiseau, sans les fréquences de passage ni les horaires d'ouverture.
 - La connexion internet est donnée à l'échelle de la commune. L'éligibilité à l'adresse (base IMB de l'Arcep, plusieurs Go) demanderait un back-end.
 - DVF : l'API du Cerema peut mettre 15 s à répondre à froid sur un centre-ville dense.
 - La qualité de l'eau est donnée à l'échelle de la commune (unité de distribution non résolue).

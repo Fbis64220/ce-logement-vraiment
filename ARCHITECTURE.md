@@ -8,7 +8,7 @@
 | **Meilleurs Agents** | Estimation de prix immédiate, interface grand public très soignée. | Modèle propriétaire et opaque (on ne sait pas d'où vient le chiffre). Rien sur le DPE ou les risques. Le but est de capter des vendeurs pour des agences. |
 | **Géorisques – mes risques** | Référence officielle des risques à l'adresse, avec rapport PDF. | Vocabulaire réglementaire. Rien sur le prix, l'énergie ou le cadre de vie. |
 
-**Différenciation :** un seul rapport qui agrège 8 sources publiques, interrogées **en direct**, chaque chiffre accompagné de sa source, de sa licence et de sa date. Les données sont traduites en **points d'attention et points forts** en langage courant. L'écran d'accueil le montre avant même la première recherche, avec la grille des 8 sources et le tableau comparatif.
+**Différenciation :** un seul rapport qui agrège 10 sources publiques, interrogées **en direct** ou précalculées chaque mois, chaque chiffre accompagné de sa source, de sa licence et de sa date. Les données sont traduites en **points d'attention et points forts** en langage courant. L'écran d'accueil le montre avant même la première recherche, avec la grille des 8 sources et le tableau comparatif.
 
 ## 2. Composants
 
@@ -19,8 +19,10 @@ Navigateur (index.html, aucune dépendance de build ; Leaflet 1.9.4 via cdnjs)
 │                                         → {label, lat, lon, citycode, id BAN}
 │
 ├─ Orchestrateur  startReport(ctx)
-│     ├─ 7 connecteurs lancés en parallèle (Promise.allSettled, délai max de 15 s chacun)
-│     │    dvf · dpe · georisques(+catnat) · noise(Overpass) · arcep · schools · water(Hub'Eau)
+│     ├─ 9 connecteurs lancés en parallèle (Promise.allSettled, délai de 15 à 45 s, une nouvelle tentative)
+│     │    dvf(Cerema) · dpe(ADEME) · georisques(11 API) · noise(BD TOPO + PEB) · transport(GTFS + BD TOPO)
+│     │    shops(data/commerces, BPE) · schools · arcep(data/arcep) · water(Hub'Eau)
+│     ├─ données lourdes ou sans CORS : précalculées par GitHub Actions dans data/ (même domaine)
 │     │    chacun renvoie un résultat normalisé :
 │     │    {status: live | empty | error, data, reason, fetchedAt}
 │     ├─ rendu progressif : chaque fiche s'affiche dès que sa source répond
