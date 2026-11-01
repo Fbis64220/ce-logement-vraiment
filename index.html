@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Ce logement, vraiment</title>
 <meta name="description" content="Le rapport complet d'une adresse à partir de données publiques ouvertes : prix des ventes voisines, DPE, risques, bruit, transports, commerces, connexion, écoles, qualité de l'eau.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath d='M14 21 17 5l10 10q5-2 10 0L47 5l3 16q6 9 4 21-3 17-22 18-19-1-22-18-2-12 4-21z' fill='%230b4f6c'/%3E%3Cellipse cx='32' cy='45' rx='13.5' ry='12' fill='%23e3eff4'/%3E%3Ccircle cx='22.5' cy='28' r='9.5' fill='%23fff'/%3E%3Ccircle cx='41.5' cy='28' r='9.5' fill='%23fff'/%3E%3Ccircle cx='22.5' cy='28.5' r='5' fill='%23f2b33b'/%3E%3Ccircle cx='41.5' cy='28.5' r='5' fill='%23f2b33b'/%3E%3Ccircle cx='22.5' cy='28.5' r='3' fill='%2317191c'/%3E%3Ccircle cx='41.5' cy='28.5' r='3' fill='%2317191c'/%3E%3Cpath d='M29 34.5h6L32 40z' fill='%23f2b33b'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <style>
 :root{
@@ -34,10 +35,30 @@ a:hover{text-decoration-thickness:2px}
 .top{background:var(--surface);border-bottom:1px solid var(--line)}
 .top .wrap{display:flex;align-items:center;justify-content:space-between;gap:1rem;min-height:58px}
 .logo{font-weight:800;letter-spacing:-.02em;color:var(--ink);text-decoration:none;font-size:1.12rem;display:inline-flex;align-items:center;gap:.5rem}
+.totem{display:inline-block;flex:none}
+.totem-logo{width:34px;height:34px;margin-top:-2px}
+.hero-title{display:flex;align-items:center;gap:1rem;margin:0 0 .7rem}
+.hero-title h1{margin:0}
+.totem-hero{width:88px;height:88px;filter:drop-shadow(0 6px 10px rgba(11,79,108,.18));transform-origin:50% 90%;animation:perche 6s ease-in-out infinite}
+@keyframes perche{0%,86%,100%{transform:rotate(0)}90%{transform:rotate(-7deg)}94%{transform:rotate(5deg)}}
+@media (prefers-reduced-motion:reduce){.totem-hero{animation:none}}
+.totem-note{margin:-.2rem 0 1rem;font-size:.85rem;color:var(--ink-3);font-style:italic}
+.has-report .totem-note,.has-report .hero-title{display:none}
+@media (max-width:520px){.totem-hero{width:60px;height:60px}.hero-title{gap:.7rem}}
 .logo-mark{width:28px;height:28px;border-radius:8px;background:var(--brand);display:grid;place-items:center;color:#fff}
 .logo-mark .ico{width:17px;height:17px}
 .logo span{color:var(--brand)}
-.logo .logo-mark{color:#fff}
+.logo .totem{display:inline-block;flex:none}
+.totem-logo{width:34px;height:34px;margin-top:-2px}
+.hero-title{display:flex;align-items:center;gap:1rem;margin:0 0 .7rem}
+.hero-title h1{margin:0}
+.totem-hero{width:88px;height:88px;filter:drop-shadow(0 6px 10px rgba(11,79,108,.18));transform-origin:50% 90%;animation:perche 6s ease-in-out infinite}
+@keyframes perche{0%,86%,100%{transform:rotate(0)}90%{transform:rotate(-7deg)}94%{transform:rotate(5deg)}}
+@media (prefers-reduced-motion:reduce){.totem-hero{animation:none}}
+.totem-note{margin:-.2rem 0 1rem;font-size:.85rem;color:var(--ink-3);font-style:italic}
+.has-report .totem-note,.has-report .hero-title{display:none}
+@media (max-width:520px){.totem-hero{width:60px;height:60px}.hero-title{gap:.7rem}}
+.logo-mark{color:#fff}
 h2[tabindex="-1"]:focus{outline:none}
 .proto{font-size:.8rem;color:var(--ink-2);border:1px solid var(--line);border-radius:999px;padding:.15rem .65rem;white-space:nowrap}
 
@@ -250,6 +271,18 @@ footer p{margin:.3rem 0}
 </head>
 <body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+<symbol id="totem" viewBox="0 0 64 64">
+    <path d="M14 21 17 5l10 10q5-2 10 0L47 5l3 16q6 9 4 21-3 17-22 18-19-1-22-18-2-12 4-21z" fill="#0b4f6c"/>
+    <path d="M17 5l3 9M47 5l-3 9" stroke="#093f56" stroke-width="2" stroke-linecap="round" fill="none"/>
+    <ellipse cx="32" cy="45" rx="13.5" ry="12" fill="#e3eff4"/>
+    <path d="M25 42l3 3 3-3M33 42l3 3 3-3M29 49l3 3 3-3" stroke="#0e6b8f" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    <circle cx="22.5" cy="28" r="9.5" fill="#fff"/><circle cx="41.5" cy="28" r="9.5" fill="#fff"/>
+    <circle cx="22.5" cy="28.5" r="5.6" fill="#f2b33b"/><circle cx="41.5" cy="28.5" r="5.6" fill="#f2b33b"/>
+    <circle cx="22.5" cy="28.5" r="3" fill="#17191c"/><circle cx="41.5" cy="28.5" r="3" fill="#17191c"/>
+    <circle cx="23.8" cy="27.2" r="1.1" fill="#fff"/><circle cx="42.8" cy="27.2" r="1.1" fill="#fff"/>
+    <path d="M29 34.5h6L32 40z" fill="#f2b33b"/>
+    <path d="M24 59.5q2-2.5 4 0M36 59.5q2-2.5 4 0" stroke="#f2b33b" stroke-width="2.2" stroke-linecap="round" fill="none"/>
+  </symbol>
   <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M10 21v-6h4v6"/></symbol>
   <symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></symbol>
   <symbol id="i-tag" viewBox="0 0 24 24"><path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L2 12V2h10l8.6 8.6a2 2 0 0 1 0 2.8z"/><circle cx="7" cy="7" r="1.5"/></symbol>
@@ -274,7 +307,7 @@ footer p{margin:.3rem 0}
 <a class="skip" href="#main">Aller au contenu</a>
 <header class="top">
   <div class="wrap">
-    <a class="logo" href="./" aria-label="Ce logement, vraiment – accueil"><span class="logo-mark" aria-hidden="true"><svg class="ico"><use href="#i-home"/></svg></span>Ce logement, <span>vraiment</span></a>
+    <a class="logo" href="./" aria-label="Ce logement, vraiment – accueil"><svg class="totem totem-logo" aria-hidden="true"><use href="#totem"/></svg>Ce logement, <span>vraiment</span></a>
     <span class="proto">Prototype · données publiques</span>
   </div>
 </header>
@@ -284,7 +317,11 @@ footer p{margin:.3rem 0}
   <section class="hero" aria-labelledby="h-hero">
     <div class="wrap">
       <p class="eyebrow">Avant d'acheter ou de louer</p>
-      <h1 id="h-hero">Découvrez ce que l'annonce ne dit pas.</h1>
+      <div class="hero-title">
+        <svg class="totem totem-hero" aria-hidden="true"><use href="#totem"/></svg>
+        <h1 id="h-hero">Découvrez ce que l'annonce ne dit pas.</h1>
+      </div>
+      <p class="totem-note">Notre totem, la chouette, voit dans le noir ce que les autres ne voient pas.</p>
       <p class="lead">Une adresse, <strong>un seul rapport</strong> : prix réels des ventes voisines, DPE, risques, bruit, transports, commerces, écoles, fibre et eau du robinet. Dix sources publiques aujourd'hui éparpillées sur autant de sites, réunies et expliquées simplement.</p>
 
       <form class="search" id="search-form" role="search" autocomplete="off" novalidate>
