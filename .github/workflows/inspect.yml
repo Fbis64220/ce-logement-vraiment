@@ -4,30 +4,21 @@ jobs:
   inspect:
     runs-on: ubuntu-latest
     steps:
-      - name: Recherches
+      - name: API gtfs-stops (CORS + format)
         run: |
-          curl -sS "https://transport.data.gouv.fr/api/datasets" -o ds.json
+          U="https://transport.data.gouv.fr/api/gtfs-stops?south=49.890&north=49.898&west=2.290&east=2.302"
+          curl -sS -D - -o s.json -H "Origin: https://fbis64220.github.io" "$U" | grep -iE "^HTTP|access-control|content-type"
+          head -c 1500 s.json; echo; python3 -c "import json;d=json.load(open('s.json'));print(type(d), (list(d.keys()) if isinstance(d,dict) else len(d)))" || true
+          U2="https://transport.data.gouv.fr/api/gtfs-stops?south=48.84&north=48.86&west=2.30&east=2.32"
+          curl -sS -o s2.json -w "paris %{http_code} %{time_total}s %{size_download}B\n" "$U2"; head -c 400 s2.json; echo
+      - name: BPE INSEE
+        run: |
+          curl -sS "https://www.data.gouv.fr/api/1/organizations/institut-national-de-la-statistique-et-des-etudes-economiques-insee/datasets/?page_size=100" -o o.json
           python3 - <<'PY'
           import json
-          d=json.load(open('ds.json')); print(len(d), 'jeux')
-          for x in d:
-              t=(x.get('title') or '')
-              if any(k in t.lower() for k in ['nationa','consolid','france enti','toute la france']):
-                  print('#', x.get('slug'), '|', t, '|', x.get('type'))
-                  for r in x.get('resources',[])[:6]: print('   ', r.get('title'), '|', r.get('format'), '|', r.get('original_url') or r.get('url'))
+          d=json.load(open('o.json'))
+          for x in d.get('data',[]):
+              if 'quipement' in x['title']:
+                  print('#', x['slug'], '|', x['title'], '|', x['last_modified'][:10])
+                  for r in x['resources'][:15]: print('   ', r['title'][:90], '|', r.get('format'), '|', r.get('filesize'), '|', r['url'])
           PY
-          echo "===== INSEE BPE sur data.gouv"
-          curl -sS "https://www.data.gouv.fr/api/1/datasets/?organization=534fff81a3a7292c64a77e5c&q=equipements&page_size=5" -o b.json
-          python3 - <<'PY'
-          import json
-          for x in json.load(open('b.json'))['data']:
-              print('#', x['slug'], '|', x['last_modified'][:10])
-              for r in x['resources'][:15]: print('   ', r['title'][:90], '|', r.get('format'), '|', r.get('filesize'), '|', r['url'])
-          PY
-          echo "===== arrets data.gouv"
-          curl -sS "https://www.data.gouv.fr/api/1/datasets/?q=arrets%20transport%20en%20commun%20france%20consolide&page_size=6" -o a.json
-          python3 -c "
-          import json
-          for x in json.load(open('a.json'))['data']:
-              print('#', x['slug'], '|', (x.get('organization') or {}).get('name'), '|', x['last_modified'][:10])
-              [print('   ', r['title'][:80], '|', r.get('format'), '|', r.get('filesize'), '|', r['url']) for r in x['resources'][:6]]"
