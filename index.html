@@ -329,7 +329,7 @@ const CONFIG = {
     dpe: "https://data.ademe.fr/data-fair/api/v1/datasets/dpe03existant/lines",
     georisques: "https://www.georisques.gouv.fr/api/v1/resultats_rapport_risque",
     catnat: "https://www.georisques.gouv.fr/api/v1/gaspar/catnat",
-    overpass: "https://overpass-api.de/api/interpreter",
+    overpass: ["https://overpass-api.de/api/interpreter", "https://overpass.private.coffee/api/interpreter", "https://maps.mail.ru/osm/tools/overpass/api/interpreter"],
     education: "https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-annuaire-education/records",
     hubeau: "https://hubeau.eaufrance.fr/api/v1/qualite_eau_potable/resultats_dis",
     arcep: null // pas d'API publique par adresse : voir README (« Brancher Arcep »)
@@ -382,14 +382,15 @@ function distToLine(lat, lon, pts) {
 class SourceError extends Error { constructor(msg, kind) { super(msg); this.kind = kind || "error"; } }
 async function fetchWithTimeout(url, opts = {}) {
   const ctrl = new AbortController();
-  const t = setTimeout(() => ctrl.abort(), CONFIG.timeoutMs);
+  const ms = opts.timeoutMs || CONFIG.timeoutMs;
+  const t = setTimeout(() => ctrl.abort(), ms);
   try {
     const res = await fetch(url, {...opts, signal: ctrl.signal});
     if (!res.ok) throw new SourceError(`réponse HTTP ${res.status}`, res.status === 404 ? "notfound" : "error");
     return res;
   } catch (e) {
     if (e instanceof SourceError) throw e;
-    if (e.name === "AbortError") throw new SourceError("délai dépassé (" + CONFIG.timeoutMs / 1000 + " s)");
+    if (e.name === "AbortError") throw new SourceError("délai dépassé (" + ms / 1000 + " s)");
     throw new SourceError("service injoignable depuis votre navigateur (réseau, blocage ou CORS)");
   } finally { clearTimeout(t); }
 }
@@ -588,7 +589,13 @@ const CONNECTORS = {
   async noise(ctx) {
     const {lat, lon} = ctx, R = CONFIG.radiusNoise;
     const q = `[out:json][timeout:25];(way(around:${R},${lat},${lon})["highway"~"^(motorway|trunk|primary|secondary)$"]["tunnel"!="yes"];way(around:${R},${lat},${lon})["railway"~"^(rail|light_rail|tram)$"]["tunnel"!="yes"]["service"!~"."];);out tags geom;nwr(around:${CONFIG.radiusAirport},${lat},${lon})["aeroway"="aerodrome"]["icao"];out tags center;`;
-    const j = await getJSON(CONFIG.endpoints.overpass, {method: "POST", body: "data=" + encodeURIComponent(q), headers: {"Content-Type": "application/x-www-form-urlencoded"}});
+    // Les serveurs Overpass publics sont souvent saturés : on essaie plusieurs instances.
+    let j, lastErr;
+    for (const url of CONFIG.endpoints.overpass) {
+      try { j = await getJSON(url, {method: "POST", body: "data=" + encodeURIComponent(q), headers: {"Content-Type": "application/x-www-form-urlencoded"}, timeoutMs: 20000}); break; }
+      catch (e) { lastErr = e; }
+    }
+    if (!j) throw lastErr;
     const ways = [], airports = [];
     for (const el of j.elements || []) {
       const t = el.tags || {};
