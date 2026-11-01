@@ -75,6 +75,7 @@ async function setup(page, mode) {
     if (u.includes('/geocodage/search') || u.includes('api-adresse')) return json(route, ban);
     if (u.includes('dvf_opendata')) return json(route, u.includes('codtypbien=111') ? dvfMai : dvfApt);
     if (u.includes('dpe03existant')) return json(route, u.endsWith(',25') ? dpeSame : dpeNear);
+    if (u.includes('georisques.gouv.fr/api/v1/rga') && u.includes('2.2958') && mode === 'empty-rga') return route.fulfill({ status: 200, headers: cors, contentType: 'application/json', body: '' });
     if (u.includes('georisques.gouv.fr/api/v1/')) { const k = u.split('/api/v1/')[1].split('?')[0]; return G[k] ? json(route, G[k]) : route.fulfill({ status: 404, headers: cors, body: '' }); }
     if (u.includes('gtfs-stops')) return json(route, stops);
     if (u.includes('/wfs/')) return json(route, u.includes('troncon_de_route') ? roads : u.includes('equipement_de_transport') ? stations : empty);
@@ -121,6 +122,14 @@ async function setup(page, mode) {
     check(true, 'C: « Réessayer » recharge la source rétablie');
     check(!/Eau/.test(await page.textContent('#missing-banner')), 'C: bandeau mis à jour après la nouvelle tentative');
     check(errs.length === 0, 'C: aucune erreur JS ' + errs.join(' | ')); await page.close(); }
+
+  // D. « argiles » renvoie un corps vide : non concerné, pas « non vérifié »
+  { const page = await browser.newPage(); await setup(page, 'empty-rga');
+    await page.goto(base + '#a=8%20Boulevard%20du%20Port%2080000%20Amiens&lat=49.8941&lon=2.2958&c=80021');
+    await page.waitForFunction(() => !document.querySelector('#att-list').textContent.includes('Analyse en cours'), null, { timeout: 30000 });
+    const g = await page.textContent('#card-georisques');
+    check(!/Non vérifié/.test(g) && /Aucune zone d'exposition cartographiée/.test(g), 'D: corps vide « argiles » = aucune zone cartographiée, pas une panne');
+    await page.close(); }
 
   // B. API simulées
   { const page = await browser.newPage({ viewport: { width: 1280, height: 900 } }); const errs = []; page.on('pageerror', e => errs.push(e.message));

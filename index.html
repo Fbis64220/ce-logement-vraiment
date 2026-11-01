@@ -631,10 +631,12 @@ const CONNECTORS = {
   async georisques(ctx) {
     const G = CONFIG.endpoints.georisques, ll = `latlon=${ctx.lon},${ctx.lat}`, insee = ctx.citycode;
     const call = (path) => getJSON(G + path, {timeoutMs: 20000});
+    // « rga » répond 200 avec un corps vide hors des zones cartographiées : ce n'est pas une panne
+    const callMaybeEmpty = async (path) => { const t = await (await fetchWithTimeout(G + path, {timeoutMs: 20000})).text(); return t.trim() ? JSON.parse(t) : {empty: true}; };
     const keys = ["risques", "azi", "tri", "sismique", "rga", "radon", "icpe", "ssp", "cavites", "mvt", "catnat"];
     const res = await Promise.allSettled([
       call(`gaspar/risques?${ll}&rayon=10`), call(`gaspar/azi?${ll}&rayon=10`), call(`gaspar/tri?${ll}&rayon=10`),
-      call(`zonage_sismique?${ll}`), call(`rga?${ll}`), insee ? call(`radon?code_insee=${insee}`) : Promise.reject(new SourceError("pas de code commune")),
+      call(`zonage_sismique?${ll}`), callMaybeEmpty(`rga?${ll}`), insee ? call(`radon?code_insee=${insee}`) : Promise.reject(new SourceError("pas de code commune")),
       call(`installations_classees?${ll}&rayon=1000&page_size=100`), call(`ssp?${ll}&rayon=500&page_size=100`),
       call(`cavites?${ll}&rayon=500`), call(`mvt?${ll}&rayon=500`),
       insee ? call(`gaspar/catnat?code_insee=${insee}&page_size=100`) : Promise.reject(new SourceError("pas de code commune"))]);
@@ -650,6 +652,7 @@ const CONNECTORS = {
       const st = tri ? `Territoire à risque important d'inondation (TRI ${String(tri.libelle_tri).replace(/^TRI\s+/i, "")})` : azi ? `Commune couverte par l'atlas des zones inondables « ${azi.libelle_azi} »` : inondCommune ? "Risque d'inondation recensé dans la commune" : "Pas de risque d'inondation recensé dans la commune";
       add("nat", "inondation", "Inondation", !!(tri || azi || inondCommune), st, tri || azi || inondCommune);
     }
+    if (R.rga && R.rga.empty) add("nat", "argiles", "Retrait-gonflement des argiles", false, "Aucune zone d'exposition cartographiée à cette adresse", false, 0);
     if (R.rga && R.rga.codeExposition != null) { const c = +R.rga.codeExposition; add("nat", "argiles", "Retrait-gonflement des argiles", c >= 1, R.rga.exposition || `Exposition ${c}`, c >= 2, c); }
     const sis = (R.sismique?.data || [])[0];
     if (sis) { const z = +sis.code_zone; add("nat", "seisme", "Séisme", z >= 2, `Zone de sismicité ${sis.zone_sismicite}`, z >= 3, z); }
@@ -764,7 +767,7 @@ const CONNECTORS = {
     if (!ctx.citycode) throw new SourceError("code commune inconnu");
     const since = new Date(Date.now() - 365 * 864e5).toISOString().slice(0, 10);
     const fields = "code_prelevement,date_prelevement,conclusion_conformite_prelevement,conformite_limites_bact_prelevement,conformite_limites_pc_prelevement,nom_distributeur";
-    const j = await getJSON(`${CONFIG.endpoints.hubeau}?code_commune=${mainCityCode(ctx.citycode)}&date_min_prelevement=${since}&size=1000&sort=desc&fields=${fields}`);
+    const j = await getJSON(`${CONFIG.endpoints.hubeau}?code_commune=${mainCityCode(ctx.citycode)}&date_min_prelevement=${since}&size=1000&sort=desc&fields=${fields}`, {timeoutMs: 30000}); // Hub'Eau peut être lent au premier appel
     const byP = new Map();
     for (const r of j.data || []) if (!byP.has(r.code_prelevement)) byP.set(r.code_prelevement, r);
     const ps = [...byP.values()].sort((a, b) => String(b.date_prelevement).localeCompare(String(a.date_prelevement)));
