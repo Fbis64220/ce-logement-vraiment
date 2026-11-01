@@ -1,0 +1,14 @@
+name: Arcep – inspection des fichiers
+on: workflow_dispatch
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - name: En-têtes et exemples des statistiques communales Arcep
+        run: |
+          B=https://data.arcep.fr/fixe/maconnexioninternet/statistiques/last/commune
+          for f in commune commune_meilleure_techno_thd commune_meilleure_techno_hd commune_techno commune_debit commune_debit_filaire; do
+            echo "===== $f"; curl -sSL "$B/$f.csv" -o $f.csv; ls -la $f.csv; file $f.csv
+            head -c 1500 $f.csv | head -4; echo; grep -m3 -E "33522|80021|75107" $f.csv || true
+          done
+          echo "===== mobile"; curl -sSL https://data.arcep.fr/mobile/ | grep -oE 'href="[^"]+"' | head -30

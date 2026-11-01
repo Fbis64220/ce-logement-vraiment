@@ -321,15 +321,14 @@ const CONFIG = {
   radiusSameBuilding: 25,// m – DPE considérés comme « cette adresse »
   radiusSchools: 1000,   // m
   radiusNoise: 400,      // m – axes routiers / ferrés
-  radiusAirport: 5000,   // m
+  radiusAirport: 8000,   // m – aéroports dotés d'un plan d'exposition au bruit (PEB)
   fallbackToSample: true, // prototype : si une source échoue, on affiche un exemple SIGNALÉ
   endpoints: {
     ban: ["https://data.geopf.fr/geocodage/search", "https://api-adresse.data.gouv.fr/search/"],
-    dvf: (year, dep, insee) => `https://files.data.gouv.fr/geo-dvf/latest/csv/${year}/communes/${dep}/${insee}.csv`,
+    dvf: "https://apidf-preprod.cerema.fr/dvf_opendata/geomutations/", // DVF+ open data (Cerema), CORS ouvert
     dpe: "https://data.ademe.fr/data-fair/api/v1/datasets/dpe03existant/lines",
-    georisques: "https://www.georisques.gouv.fr/api/v1/resultats_rapport_risque",
-    catnat: "https://www.georisques.gouv.fr/api/v1/gaspar/catnat",
-    overpass: ["https://overpass-api.de/api/interpreter", "https://overpass.private.coffee/api/interpreter", "https://maps.mail.ru/osm/tools/overpass/api/interpreter"],
+    georisques: "https://www.georisques.gouv.fr/api/v1/", // API v1 détaillée (le « rapport risque » synthétique est en panne en HTTP/2)
+    wfs: "https://data.geopf.fr/wfs/ows", // Géoplateforme IGN : BD TOPO + PEB DGAC
     education: "https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-annuaire-education/records",
     hubeau: "https://hubeau.eaufrance.fr/api/v1/qualite_eau_potable/resultats_dis",
     arcep: null // pas d'API publique par adresse : voir README (« Brancher Arcep »)
@@ -338,10 +337,10 @@ const CONFIG = {
 
 const SOURCES = {
   ban:   {name:"Base Adresse Nationale", short:"Adresse", producer:"IGN / Etalab", license:"Licence Ouverte 2.0", licenseUrl:"https://www.etalab.gouv.fr/licence-ouverte-open-licence/", url:"https://adresse.data.gouv.fr", what:"Géocodage de l'adresse"},
-  dvf:   {name:"DVF – Demandes de valeurs foncières", short:"Prix (DVF)", producer:"DGFiP, géolocalisé par Etalab", license:"Licence Ouverte 2.0", licenseUrl:"https://www.etalab.gouv.fr/licence-ouverte-open-licence/", url:"https://www.data.gouv.fr/fr/datasets/demandes-de-valeurs-foncieres-geolocalisees/", what:"Prix des ventes réelles"},
+  dvf:   {name:"DVF+ open data (valeurs foncières)", short:"Prix (DVF)", producer:"DGFiP, enrichi par le Cerema", license:"Licence Ouverte 2.0", licenseUrl:"https://www.etalab.gouv.fr/licence-ouverte-open-licence/", url:"https://www.data.gouv.fr/datasets/dvf-open-data", what:"Prix des ventes réelles"},
   dpe:   {name:"DPE logements existants (depuis 07/2021)", short:"Énergie (DPE)", producer:"ADEME", license:"Licence Ouverte 2.0", licenseUrl:"https://www.etalab.gouv.fr/licence-ouverte-open-licence/", url:"https://data.ademe.fr/datasets/dpe03existant", what:"Diagnostics énergétiques"},
-  georisques:{name:"Géorisques – rapport de risques", short:"Risques", producer:"Ministère de la Transition écologique / BRGM", license:"Licence Ouverte 2.0", licenseUrl:"https://www.etalab.gouv.fr/licence-ouverte-open-licence/", url:"https://www.georisques.gouv.fr/doc-api", what:"Risques naturels et technologiques, arrêtés CatNat"},
-  noise: {name:"OpenStreetMap via Overpass (estimation du bruit)", short:"Bruit", producer:"Contributeurs OpenStreetMap", license:"ODbL 1.0", licenseUrl:"https://opendatacommons.org/licenses/odbl/", url:"https://www.openstreetmap.org/copyright", what:"Axes routiers, voies ferrées, aéroports proches"},
+  georisques:{name:"Géorisques (API v1)", short:"Risques", producer:"Ministère de la Transition écologique / BRGM", license:"Licence Ouverte 2.0", licenseUrl:"https://www.etalab.gouv.fr/licence-ouverte-open-licence/", url:"https://www.georisques.gouv.fr/doc-api", what:"Risques naturels et technologiques, arrêtés CatNat"},
+  noise: {name:"BD TOPO® et plans d'exposition au bruit (estimation du bruit)", short:"Bruit", producer:"IGN / DGAC (Géoplateforme)", license:"Licence Ouverte 2.0", licenseUrl:"https://www.etalab.gouv.fr/licence-ouverte-open-licence/", url:"https://geoservices.ign.fr/bdtopo", what:"Grands axes, voies ferrées, aéroports avec PEB"},
   arcep: {name:"Arcep – Ma connexion internet", short:"Connexion", producer:"Arcep", license:"Licence Ouverte 2.0", licenseUrl:"https://www.etalab.gouv.fr/licence-ouverte-open-licence/", url:"https://maconnexioninternet.arcep.fr", what:"Fibre, ADSL, couverture mobile"},
   schools:{name:"Annuaire de l'éducation", short:"Écoles", producer:"Ministère de l'Éducation nationale", license:"Licence Ouverte 2.0", licenseUrl:"https://www.etalab.gouv.fr/licence-ouverte-open-licence/", url:"https://data.education.gouv.fr/explore/dataset/fr-en-annuaire-education/", what:"Écoles, collèges, lycées"},
   water: {name:"Hub'Eau – qualité de l'eau potable", short:"Eau", producer:"Ministère de la Santé (ARS) / OFB", license:"Licence Ouverte 2.0", licenseUrl:"https://www.etalab.gouv.fr/licence-ouverte-open-licence/", url:"https://hubeau.eaufrance.fr/page/api-qualite-eau-potable", what:"Conformité de l'eau du robinet"}
@@ -394,7 +393,17 @@ async function fetchWithTimeout(url, opts = {}) {
     throw new SourceError("service injoignable depuis votre navigateur (réseau, blocage ou CORS)");
   } finally { clearTimeout(t); }
 }
-const getJSON = async (url, opts) => (await fetchWithTimeout(url, opts)).json();
+// Une nouvelle tentative après 1,5 s si le réseau coupe (pas pour un 404 ni un délai dépassé)
+async function getJSON(url, opts = {}) {
+  for (let attempt = 0; ; attempt++) {
+    try { return await (await fetchWithTimeout(url, opts)).json(); }
+    catch (e) {
+      const retriable = e instanceof SourceError && /injoignable|HTTP 5\d\d|HTTP 429/.test(e.message);
+      if (attempt >= 1 || !retriable) throw e;
+      await new Promise(r => setTimeout(r, 1500));
+    }
+  }
+}
 function parseCSV(text) {
   const rows = []; let row = [], f = "", q = false;
   for (let i = 0; i < text.length; i++) {
@@ -448,25 +457,24 @@ const SAMPLE = {
     return {nearby: list, same};
   },
   georisques(ctx) {
+    const it = (group, key, label, present, statut, alert, level) => ({group, key, label, present, statut, alert, level});
     return {
-      natural: [
-        {key: "inondation", label: "Inondation", present: true, statut: "Commune concernée par un plan de prévention"},
-        {key: "retraitGonflementArgile", label: "Retrait-gonflement des argiles", present: true, statut: "Exposition moyenne"},
-        {key: "seisme", label: "Séisme", present: true, statut: "Zone de sismicité 2 (faible)", level: 2},
-        {key: "radon", label: "Radon", present: false, statut: "Potentiel de catégorie 1 (faible)"},
-        {key: "mouvementTerrain", label: "Mouvement de terrain", present: false, statut: "Non concerné"}],
-      tech: [
-        {key: "icpe", label: "Installations industrielles (ICPE)", present: true, statut: "2 installations à moins de 1 km"},
-        {key: "pollutionSols", label: "Pollution des sols", present: false, statut: "Aucun site recensé"},
-        {key: "nucleaire", label: "Nucléaire", present: false, statut: "Non concerné"}],
+      items: [
+        it("nat", "inondation", "Inondation", true, "Commune couverte par un atlas des zones inondables", true),
+        it("nat", "argiles", "Retrait-gonflement des argiles", true, "Exposition moyenne", true, 2),
+        it("nat", "seisme", "Séisme", true, "Zone de sismicité 2 (faible)", false, 2),
+        it("nat", "radon", "Radon", false, "Potentiel de catégorie 1 (faible)", false, 1),
+        it("tech", "icpe", "Installations industrielles (ICPE)", true, "2 installations à moins de 1 km, aucune Seveso", false),
+        it("tech", "sols", "Pollution des sols", false, "Aucun site pollué connu à moins de 500 m", false)],
+      sites: [], communeRisks: ["Inondation", "Mouvement de terrain", "Séisme"],
       catnat: [{date: "2021-06-19", label: "Inondations et/ou coulées de boue"}, {date: "2018-07-01", label: "Sécheresse"}, {date: "2016-05-30", label: "Inondations et/ou coulées de boue"}],
       catnatTotal: 6, url: "https://www.georisques.gouv.fr/mes-risques/connaitre-les-risques-pres-de-chez-moi"
     };
   },
   noise(ctx) {
     const r = rng(this.seed(ctx, 4));
-    const mk = (type, ref, dist) => { const p = around(r, ctx.lat, ctx.lon, 1); return {type, name: ref, dist, geom: [around(r, ctx.lat, ctx.lon, dist * 1.4), around(r, ctx.lat, ctx.lon, dist * 1.4)]}; };
-    return {ways: [mk("primary", "Avenue d'exemple", 120), mk("rail", "Voie ferrée d'exemple", 310)], airports: [], osmDate: null};
+    const mk = (type, name, dist) => ({type, name, dist, geom: [around(r, ctx.lat, ctx.lon, dist * 1.4), around(r, ctx.lat, ctx.lon, dist * 1.4)]});
+    return {ways: [mk("primary", "Avenue d'exemple", 120), mk("rail", "Voie ferrée d'exemple", 310)], airports: [], updated: null};
   },
   arcep() {
     return {fibre: {eligible: true, operators: 4, since: "2021"}, dsl: {maxMbps: 15}, mobile: [{op: "Opérateur A", g4: "Très bonne couverture", g5: true}, {op: "Opérateur B", g4: "Très bonne couverture", g5: true}, {op: "Opérateur C", g4: "Bonne couverture", g5: false}, {op: "Opérateur D", g4: "Bonne couverture", g5: true}]};
@@ -503,41 +511,39 @@ async function banSearch(q, limit = 5) {
 /* ============================ Connecteurs ============================ */
 const CONNECTORS = {
   async dvf(ctx) {
-    if (!ctx.citycode) throw new SourceError("code commune inconnu");
-    const dep = depFromCity(ctx.citycode);
-    if (["57", "67", "68", "976"].includes(dep)) throw new SourceError("DVF ne couvre pas l'Alsace, la Moselle ni Mayotte (livre foncier)", "empty");
-    const y = new Date().getFullYear(), years = [y, y - 1, y - 2, y - 3, y - 4];
-    const res = await Promise.allSettled(years.map(yr => fetchWithTimeout(CONFIG.endpoints.dvf(yr, dep, ctx.citycode)).then(r => r.text())));
-    const ok = res.filter(r => r.status === "fulfilled");
-    if (!ok.length) {
-      const errs = res.map(r => r.reason);
-      if (errs.every(e => e && e.kind === "notfound")) throw new SourceError("aucune vente publiée pour cette commune", "empty");
-      throw errs.find(e => e && e.kind !== "notfound") || new SourceError("fichiers DVF indisponibles");
-    }
-    const rows = ok.flatMap(r => parseCSV(r.value));
-    const byMut = new Map();
-    for (const row of rows) { if (!byMut.has(row.id_mutation)) byMut.set(row.id_mutation, []); byMut.get(row.id_mutation).push(row); }
+    const R = CONFIG.radiusSales, dLat = R / 110540, dLon = R / (111320 * Math.cos(ctx.lat * Math.PI / 180));
+    const bbox = [ctx.lon - dLon, ctx.lat - dLat, ctx.lon + dLon, ctx.lat + dLat].map(x => x.toFixed(5)).join(",");
+    const minYear = new Date().getFullYear() - Math.ceil(CONFIG.salesMonths / 12); // les ventes sont publiées avec 6 à 12 mois de retard
+    // 121 = un appartement, 111 = une maison (nomenclature DVF+ du Cerema)
+    const fetchType = async (code) => {
+      let url = `${CONFIG.endpoints.dvf}?in_bbox=${bbox}&anneemut_min=${minYear}&codtypbien=${code}&page_size=500`, feats = [];
+      for (let page = 0; url && page < 4; page++) {
+        const j = await getJSON(url, {timeoutMs: 45000});
+        feats.push(...(j.features || []));
+        url = j.next ? j.next.replace(/^http:/, "https:") : null;
+      }
+      return feats;
+    };
+    const feats = (await Promise.all([fetchType(121), fetchType(111)])).flat();
+    const centroid = (g) => { let n = 0, la = 0, lo = 0; const walk = (a) => { if (typeof a[0] === "number") { lo += a[0]; la += a[1]; n++; } else a.forEach(walk); }; if (g) walk(g.coordinates); return n ? {lat: la / n, lon: lo / n} : null; };
     const sales = [];
-    for (const [, group] of byMut) {
-      const g0 = group[0];
-      if (g0.nature_mutation !== "Vente") continue;
-      const hab = group.filter(r => r.type_local === "Appartement" || r.type_local === "Maison");
-      const uniq = new Map(hab.map(r => [`${r.type_local}|${r.surface_reelle_bati}|${r.id_parcelle}|${r.lot1_numero}`, r]));
-      if (uniq.size !== 1) continue; // ventes groupées : prix/m² non interprétable
-      const h = [...uniq.values()][0];
-      const price = parseFloat(g0.valeur_fonciere), surf = parseFloat(h.surface_reelle_bati);
-      const lat = parseFloat(h.latitude), lon = parseFloat(h.longitude);
-      if (!price || !surf || isNaN(lat) || isNaN(lon)) continue;
+    let updated = "";
+    for (const f of feats) {
+      const p = f.properties || {};
+      if (p.datemut > updated) updated = p.datemut;
+      if (!/^Vente/.test(p.libnatmut || "") || p.nbcomm > 1 || p.nbpar > 2) continue;
+      const price = parseFloat(p.valeurfonc), surf = parseFloat(p.sbati);
+      if (!price || !surf) continue;
       const ppm = price / surf; if (ppm < 300 || ppm > 40000) continue;
-      const dist = haversine(ctx.lat, ctx.lon, lat, lon); if (dist > CONFIG.radiusSales) continue;
-      sales.push({date: g0.date_mutation, type: h.type_local, surface: surf, price, ppm, rooms: parseInt(h.nombre_pieces_principales) || null, lat, lon, dist,
-        address: [h.adresse_numero, h.adresse_suffixe, h.adresse_nom_voie].filter(Boolean).join(" ")});
+      const c = centroid(f.geometry); if (!c) continue;
+      const dist = haversine(ctx.lat, ctx.lon, c.lat, c.lon); if (dist > R) continue;
+      const par = (p.l_idpar || [])[0] || "";
+      sales.push({date: p.datemut, type: p.codtypbien === "111" ? "Maison" : "Appartement", surface: surf, price, ppm, rooms: null, lat: c.lat, lon: c.lon, dist,
+        vefa: !!p.vefa, address: par ? `Parcelle ${par.slice(8, 10).replace(/^0/, "")} ${parseInt(par.slice(10), 10)}` : ""});
     }
-    const updated = rows.reduce((m, r) => r.date_mutation > m ? r.date_mutation : m, "");
-    if (!sales.length) throw new SourceError(`aucune vente de logement trouvée à moins de ${CONFIG.radiusSales} m`, "empty");
+    if (!sales.length) throw new SourceError(`aucune vente d'appartement ou de maison publiée à moins de ${R} m`, "empty");
     const limit = new Date(updated); limit.setMonth(limit.getMonth() - CONFIG.salesMonths);
-    const recent = sales.filter(s => new Date(s.date) >= limit);
-    return {sales: recent.length ? recent : sales, updated};
+    return {sales: sales.filter(s => new Date(s.date) >= limit), updated};
   },
 
   async dpe(ctx) {
@@ -567,44 +573,72 @@ const CONNECTORS = {
   },
 
   async georisques(ctx) {
-    const [rep, cat] = await Promise.allSettled([
-      getJSON(`${CONFIG.endpoints.georisques}?latlon=${ctx.lon},${ctx.lat}`),
-      ctx.citycode ? getJSON(`${CONFIG.endpoints.catnat}?code_insee=${ctx.citycode}&page_size=100`) : Promise.reject(new SourceError("pas de code commune"))
-    ]);
-    if (rep.status === "rejected") throw rep.reason;
-    const j = rep.value;
-    const labels = {inondation: "Inondation", risqueCotier: "Submersion marine / risque côtier", seisme: "Séisme", mouvementTerrain: "Mouvement de terrain", reculTraitCote: "Recul du trait de côte",
-      retraitGonflementArgile: "Retrait-gonflement des argiles", avalanche: "Avalanche", feuForet: "Feu de forêt", eruptionVolcanique: "Éruption volcanique", cyclone: "Cyclone / vent", radon: "Radon",
-      icpe: "Installations industrielles (ICPE)", nucleaire: "Nucléaire", canalisationsMatieresDangereuses: "Canalisations de matières dangereuses", pollutionSols: "Pollution des sols", ruptureBarrage: "Rupture de barrage", risqueMinier: "Risque minier"};
-    const conv = (obj) => Object.entries(obj || {}).map(([k, v]) => ({key: k, label: labels[k] || v.libelle || k, present: !!v.present, statut: v.libelleStatutAdresse || v.libelleStatutCommune || (v.present ? "Concerné" : "Non concerné")}));
-    let catnat = [], catnatTotal = null;
-    if (cat.status === "fulfilled") {
-      const data = cat.value.data || [];
-      catnatTotal = cat.value.results ?? data.length;
-      catnat = data.map(a => ({date: a.date_debut_evt || a.date_publication_arrete, label: a.libelle_risque_jo})).sort((a, b) => String(b.date).localeCompare(String(a.date)));
+    const G = CONFIG.endpoints.georisques, ll = `latlon=${ctx.lon},${ctx.lat}`, insee = ctx.citycode;
+    const call = (path) => getJSON(G + path, {timeoutMs: 20000});
+    const keys = ["risques", "azi", "tri", "sismique", "rga", "radon", "icpe", "ssp", "cavites", "mvt", "catnat"];
+    const res = await Promise.allSettled([
+      call(`gaspar/risques?${ll}&rayon=10`), call(`gaspar/azi?${ll}&rayon=10`), call(`gaspar/tri?${ll}&rayon=10`),
+      call(`zonage_sismique?${ll}`), call(`rga?${ll}`), insee ? call(`radon?code_insee=${insee}`) : Promise.reject(new SourceError("pas de code commune")),
+      call(`installations_classees?${ll}&rayon=1000&page_size=100`), call(`ssp?${ll}&rayon=500&page_size=100`),
+      call(`cavites?${ll}&rayon=500`), call(`mvt?${ll}&rayon=500`),
+      insee ? call(`gaspar/catnat?code_insee=${insee}&page_size=100`) : Promise.reject(new SourceError("pas de code commune"))]);
+    const R = Object.fromEntries(keys.map((k, i) => [k, res[i].status === "fulfilled" ? res[i].value : null]));
+    if (Object.values(R).every(v => v == null)) throw res[0].reason;
+    const items = [], sites = [];
+    const add = (group, key, label, present, statut, alert, level) => items.push({group, key, label, present, statut, alert: !!alert, level});
+    const communeRisks = ((R.risques?.data || [])[0]?.risques_detail || []).map(r => r.libelle_risque_long);
+    // Inondation
+    const tri = (R.tri?.data || [])[0], azi = (R.azi?.data || [])[0];
+    const inondCommune = communeRisks.some(l => /inondation/i.test(l));
+    if (R.tri || R.azi || R.risques) {
+      const st = tri ? `Territoire à risque important d'inondation (TRI ${tri.libelle_tri})` : azi ? `Commune couverte par l'atlas des zones inondables « ${azi.libelle_azi} »` : inondCommune ? "Risque d'inondation recensé dans la commune" : "Pas de risque d'inondation recensé dans la commune";
+      add("nat", "inondation", "Inondation", !!(tri || azi || inondCommune), st, tri || azi || inondCommune);
     }
-    return {natural: conv(j.risquesNaturels), tech: conv(j.risquesTechnologiques), catnat, catnatTotal, url: j.url || "https://www.georisques.gouv.fr/mes-risques"};
+    if (R.rga && R.rga.codeExposition != null) { const c = +R.rga.codeExposition; add("nat", "argiles", "Retrait-gonflement des argiles", c >= 1, R.rga.exposition || `Exposition ${c}`, c >= 2, c); }
+    const sis = (R.sismique?.data || [])[0];
+    if (sis) { const z = +sis.code_zone; add("nat", "seisme", "Séisme", z >= 2, `Zone de sismicité ${sis.zone_sismicite}`, z >= 3, z); }
+    const rad = (R.radon?.data || [])[0];
+    if (rad) { const c = +rad.classe_potentiel; add("nat", "radon", "Radon", c >= 2, `Potentiel radon de catégorie ${c} sur 3`, c >= 3, c); }
+    if (R.mvt) { const n = R.mvt.results || 0; add("nat", "mvt", "Mouvements de terrain", n > 0, n ? `${n} mouvement(s) de terrain recensé(s) à moins de 500 m` : "Aucun mouvement de terrain recensé à moins de 500 m", n > 0); }
+    if (R.cavites) { const n = R.cavites.results || 0; add("nat", "cavites", "Cavités souterraines", n > 0, n ? `${n} cavité(s) recensée(s) à moins de 500 m` : "Aucune cavité recensée à moins de 500 m", n > 0); }
+    communeRisks.filter(l => /feu|avalanche|cyclone|volcan|submersion|littoral/i.test(l)).forEach(l => add("nat", "c-" + l, l, true, "Risque recensé dans la commune", true));
+    if (R.icpe) {
+      const list = (R.icpe.data || []).filter(i => !/fin d'exploitation|cessation/i.test(i.etatActivite || "")).map(i => ({kind: "icpe", name: i.raisonSociale, seveso: /seveso/i.test(i.statutSeveso || "") && !/non seveso/i.test(i.statutSeveso || ""), info: i.statutSeveso, lat: i.latitude, lon: i.longitude, dist: haversine(ctx.lat, ctx.lon, i.latitude, i.longitude)}));
+      sites.push(...list);
+      const sev = list.filter(i => i.seveso), close = list.filter(i => i.dist <= 300);
+      add("tech", "icpe", "Installations industrielles (ICPE)", list.length > 0, list.length ? `${list.length} installation(s) en activité à moins de 1 km${sev.length ? `, dont ${sev.length} Seveso` : ", aucune Seveso"}${close.length ? ` ; la plus proche à ${fmtDist(Math.min(...close.map(c => c.dist)))}` : ""}` : "Aucune installation classée en activité à moins de 1 km", sev.length > 0 || close.length > 0);
+    }
+    if (R.ssp) {
+      const pt = (x) => x.geom && x.geom.type === "Point" ? {lat: x.geom.coordinates[1], lon: x.geom.coordinates[0]} : null;
+      const pol = [...(R.ssp.instructions?.data || []), ...(R.ssp.conclusions_sis?.data || [])];
+      const anciens = (R.ssp.casias?.data || []), nAnciens = R.ssp.casias?.results ?? anciens.length;
+      anciens.forEach(x => { const c = pt(x); if (c) sites.push({kind: "casias", name: x.nom_etablissement || x.adresse || "Ancien site industriel", info: x.statut, ...c, dist: haversine(ctx.lat, ctx.lon, c.lat, c.lon)}); });
+      pol.forEach(x => { const c = pt(x); if (c) sites.push({kind: "sol", name: x.nom_site || x.nom_etablissement || "Site ou sol pollué", info: "", ...c, dist: haversine(ctx.lat, ctx.lon, c.lat, c.lon)}); });
+      const nearOld = sites.filter(x => x.kind === "casias" && x.dist <= 100).length;
+      add("tech", "sols", "Pollution des sols", pol.length > 0, pol.length ? `${pol.length} site(s) pollué(s) ou secteur(s) d'information sur les sols à moins de 500 m` : "Aucun site pollué connu à moins de 500 m", pol.length > 0);
+      add("tech", "casias", "Anciennes activités industrielles", nAnciens > 0, nAnciens ? `${nAnciens} ancien(s) site(s) industriel(s) ou de service à moins de 500 m${nearOld ? ` (dont ${nearOld} à moins de 100 m)` : ""}` : "Aucun ancien site industriel recensé à moins de 500 m", nearOld > 0);
+    }
+    const toISO = (d) => { const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(d || ""); return m ? `${m[3]}-${m[2]}-${m[1]}` : d; };
+    let catnat = [], catnatTotal = null;
+    if (R.catnat) { catnatTotal = R.catnat.results ?? (R.catnat.data || []).length; catnat = (R.catnat.data || []).map(a => ({date: toISO(a.date_debut_evt), label: a.libelle_risque_jo})).sort((a, b) => String(b.date).localeCompare(String(a.date))); }
+    const failed = keys.filter(k => !R[k]);
+    return {items, sites, communeRisks, catnat, catnatTotal, failed, url: `https://www.georisques.gouv.fr/mes-risques/connaitre-les-risques-pres-de-chez-moi/rapport2?form-commune=true&codeInsee=${insee}&lon=${ctx.lon}&lat=${ctx.lat}&isCadastre=false`};
   },
 
   async noise(ctx) {
-    const {lat, lon} = ctx, R = CONFIG.radiusNoise;
-    const q = `[out:json][timeout:25];(way(around:${R},${lat},${lon})["highway"~"^(motorway|trunk|primary|secondary)$"]["tunnel"!="yes"];way(around:${R},${lat},${lon})["railway"~"^(rail|light_rail|tram)$"]["tunnel"!="yes"]["service"!~"."];);out tags geom;nwr(around:${CONFIG.radiusAirport},${lat},${lon})["aeroway"="aerodrome"]["icao"];out tags center;`;
-    // Les serveurs Overpass publics sont souvent saturés : on essaie plusieurs instances.
-    let j, lastErr;
-    for (const url of CONFIG.endpoints.overpass) {
-      try { j = await getJSON(url, {method: "POST", body: "data=" + encodeURIComponent(q), headers: {"Content-Type": "application/x-www-form-urlencoded"}, timeoutMs: 20000}); break; }
-      catch (e) { lastErr = e; }
-    }
-    if (!j) throw lastErr;
-    const ways = [], airports = [];
-    for (const el of j.elements || []) {
-      const t = el.tags || {};
-      if (t.aeroway === "aerodrome") { const c = el.center || el; airports.push({name: t.name || t.icao, dist: haversine(lat, lon, c.lat, c.lon), lat: c.lat, lon: c.lon}); continue; }
-      if (!el.geometry) continue;
-      const type = t.railway ? (t.railway === "tram" ? "tram" : "rail") : ({motorway: "motorway", trunk: "motorway"}[t.highway] || t.highway);
-      ways.push({type, name: t.name || t.ref || "", dist: distToLine(lat, lon, el.geometry), geom: el.geometry});
-    }
-    return {ways, airports, osmDate: j.osm3s && j.osm3s.timestamp_osm_base};
+    const W = CONFIG.endpoints.wfs, P = `POINT(${ctx.lat} ${ctx.lon})`;
+    const wfs = (type, props, filter, count) => getJSON(`${W}?SERVICE=WFS&VERSION=2.0.0&REQUEST=GetFeature&outputFormat=application/json&srsName=EPSG:4326&TYPENAMES=${type}&count=${count}&propertyName=${props}&CQL_FILTER=${encodeURIComponent(filter)}`, {timeoutMs: 20000});
+    const [roads, rails, peb] = await Promise.all([
+      wfs("BDTOPO_V3:troncon_de_route", "geometrie,importance,nature,nom_voie_ban_gauche,cpx_numero,date_modification", `importance IN ('1','2','3') AND position_par_rapport_au_sol IN ('0','1','2') AND DWITHIN(geometrie,${P},${CONFIG.radiusNoise},meters)`, 500),
+      wfs("BDTOPO_V3:troncon_de_voie_ferree", "geometrie,nature,position_par_rapport_au_sol,date_modification", `position_par_rapport_au_sol IN ('0','1','2') AND etat_de_l_objet='En service' AND nature <> 'Voie de service' AND DWITHIN(geometrie,${P},${CONFIG.radiusNoise},meters)`, 300),
+      wfs("dgac_peb_arrete_wfs:dgac_peb_arrete_wfs", "geom,nom,oaci,arrete_peb", `DWITHIN(geom,${P},${CONFIG.radiusAirport},meters)`, 10)]);
+    const lines = (g) => !g ? [] : g.type === "LineString" ? [g.coordinates] : g.type === "MultiLineString" ? g.coordinates : [];
+    const ways = []; let updated = "";
+    const push = (f, type, name) => { lines(f.geometry).forEach(c => { const pts = c.map(p => ({lat: p[1], lon: p[0]})); ways.push({type, name, dist: distToLine(ctx.lat, ctx.lon, pts), geom: pts}); }); const d = f.properties.date_modification || ""; if (d > updated) updated = d; };
+    (roads.features || []).forEach(f => { const p = f.properties; push(f, p.nature === "Type autoroutier" || p.importance === "1" ? "motorway" : p.importance === "2" ? "primary" : "secondary", p.cpx_numero || p.nom_voie_ban_gauche || ""); });
+    (rails.features || []).forEach(f => { const p = f.properties; push(f, p.nature === "Tramway" ? "tram" : "rail", p.nature === "Métro" ? "métro aérien" : p.nature === "Tramway" ? "" : p.nature.toLowerCase()); });
+    const airports = (peb.features || []).map(f => ({name: f.properties.nom, oaci: f.properties.oaci, peb: f.properties.arrete_peb, lat: f.geometry.coordinates[1], lon: f.geometry.coordinates[0], dist: haversine(ctx.lat, ctx.lon, f.geometry.coordinates[1], f.geometry.coordinates[0])}));
+    return {ways, airports, updated};
   },
 
   async arcep() {
@@ -713,7 +747,7 @@ function renderCard(id) {
   card.insertAdjacentHTML("beforeend", srcLine(id, r, extra));
 }
 const EMPTY_HELP = {
-  dvf: `<p class="muted">Peu de ventes dans le rayon, commune non couverte (Alsace-Moselle, Mayotte) ou vente trop récente pour être publiée (délai de 6 à 12 mois).</p>`,
+  dvf: `<p class="muted">Peu de ventes dans le rayon, territoire non couvert par DVF (Alsace, Moselle, Mayotte) ou vente trop récente pour être publiée (délai de 6 à 12 mois).</p>`,
   dpe: `<p class="muted">Seuls les DPE réalisés depuis juillet 2021 sont publiés ici. Demandez le DPE au vendeur ou au bailleur : il est obligatoire dans l'annonce.</p>`,
   schools: `<p class="muted">Élargissez la recherche sur <a href="https://www.education.gouv.fr/annuaire" target="_blank" rel="noopener">l'annuaire de l'éducation</a>.</p>`,
   water: `<p class="muted">Consultez les résultats affichés en mairie ou sur <a href="https://sante.gouv.fr/sante-et-environnement/eaux/eau" target="_blank" rel="noopener">le site du ministère de la Santé</a>.</p>`
@@ -737,8 +771,8 @@ const RENDER = {
         <div class="kpi"><div class="l">Évolution sur 1 an</div><div class="v">${trend == null ? "—" : (trend > 0 ? "+" : "") + trend.toFixed(1).replace(".", ",") + " %"}</div><div class="l">${trend == null ? "trop peu de ventes" : "médiane 12 derniers mois"}</div></div>
       </div>
       <table><caption class="sr-only">Ventes récentes les plus proches</caption><thead><tr><th scope="col">Date</th><th scope="col">Bien</th><th scope="col" class="num">Prix</th><th scope="col" class="num">€/m²</th><th scope="col" class="num">Distance</th></tr></thead>
-      <tbody>${recent.map(x => `<tr><td>${fmtDate(x.date)}</td><td>${esc(x.type)} ${fmtInt(x.surface)} m²${x.rooms ? `, ${x.rooms} p.` : ""}</td><td class="num">${fmtEur(x.price)}</td><td class="num">${fmtInt(x.ppm)}</td><td class="num">${fmtDist(x.dist)}</td></tr>`).join("")}</tbody></table>
-      <p class="muted" style="font-size:.82rem;margin:.4rem 0 0">${s.length} ventes de logements sur ${CONFIG.salesMonths} mois. Ventes groupées et prix aberrants exclus. Les ventes des 6 à 12 derniers mois ne sont pas encore publiées.</p>`;
+      <tbody>${recent.map(x => `<tr><td>${fmtDate(x.date)}</td><td>${esc(x.type)} ${fmtInt(x.surface)} m²${x.rooms ? `, ${x.rooms} p.` : ""}${x.vefa ? " (VEFA)" : ""}</td><td class="num">${fmtEur(x.price)}</td><td class="num">${fmtInt(x.ppm)}</td><td class="num">${fmtDist(x.dist)}</td></tr>`).join("")}</tbody></table>
+      <p class="muted" style="font-size:.82rem;margin:.4rem 0 0">${s.length} ventes de logements sur ${CONFIG.salesMonths} mois. Ventes groupées et prix aberrants exclus. Les ventes des 6 à 12 derniers mois ne sont pas encore publiées. VEFA = vente sur plan.</p>`;
     return {html, extra: `Ventes publiées jusqu'au ${fmtDate(d.updated)}`};
   },
   dpe(d) {
@@ -759,29 +793,31 @@ const RENDER = {
     return {html, extra: `DPE le plus récent : ${fmtDate(latest)}`};
   },
   georisques(d) {
-    const row = (x) => `<li><span class="pill ${x.present ? "bad" : "ok"}">${x.present ? "Concerné" : "Non"}</span> <strong>${esc(x.label)}</strong><br><span class="muted" style="font-size:.85rem">${esc(x.statut)}</span></li>`;
-    const pres = (l) => l.filter(x => x.present), abs = (l) => l.filter(x => !x.present);
+    const row = (x) => `<li><span class="pill ${x.alert ? "bad" : x.present ? "warn" : "ok"}">${x.alert ? "À vérifier" : x.present ? "Faible" : "Non"}</span> <strong>${esc(x.label)}</strong><br><span class="muted" style="font-size:.85rem">${esc(x.statut)}</span></li>`;
+    const al = d.items.filter(x => x.alert), low = d.items.filter(x => !x.alert && x.present), no = d.items.filter(x => !x.present);
     const html = `
-      <p style="margin:0 0 .4rem"><strong>${pres(d.natural).length}</strong> risque(s) naturel(s) et <strong>${pres(d.tech).length}</strong> risque(s) technologique(s) signalés à cette adresse ou dans la commune.</p>
-      <ul class="plain" style="list-style:none;padding:0;display:grid;gap:.4rem">${[...pres(d.natural), ...pres(d.tech)].map(row).join("") || "<li>Aucun risque majeur recensé.</li>"}</ul>
+      <p style="margin:0 0 .4rem"><strong>${al.length}</strong> risque(s) à examiner de près, <strong>${low.length}</strong> présent(s) à un niveau faible.</p>
+      <ul class="plain" style="list-style:none;padding:0;display:grid;gap:.4rem">${[...al, ...low].map(row).join("") || "<li>Aucun risque recensé.</li>"}</ul>
       ${d.catnatTotal != null ? `<p style="margin:.6rem 0 .2rem"><strong>${d.catnatTotal}</strong> arrêté(s) de catastrophe naturelle dans la commune depuis 1982.</p>
         ${d.catnat.length ? `<ul class="plain">${d.catnat.slice(0, 4).map(c => `<li>${fmtDate(c.date)} : ${esc(c.label)}</li>`).join("")}</ul>` : ""}` : `<p class="muted">Arrêtés CatNat : non disponibles.</p>`}
-      <details class="more"><summary>Risques non concernés (${abs(d.natural).length + abs(d.tech).length})</summary><ul class="plain">${[...abs(d.natural), ...abs(d.tech)].map(x => `<li>${esc(x.label)} : ${esc(x.statut)}</li>`).join("")}</ul></details>
+      <details class="more"><summary>Risques non concernés (${no.length})</summary><ul class="plain">${no.map(x => `<li>${esc(x.label)} : ${esc(x.statut)}</li>`).join("")}</ul></details>
+      ${d.communeRisks && d.communeRisks.length ? `<p class="muted" style="font-size:.85rem;margin:.4rem 0 0">Risques recensés dans la commune : ${d.communeRisks.map(esc).join(", ")}.</p>` : ""}
+      ${d.failed && d.failed.length ? `<p class="muted" style="font-size:.82rem;margin:.3rem 0 0">Données partielles : ${d.failed.length} requête(s) Géorisques sans réponse.</p>` : ""}
       <p style="margin:.5rem 0 0;font-size:.9rem"><a href="${esc(d.url)}" target="_blank" rel="noopener">Rapport complet sur Géorisques</a></p>`;
     return {html, extra: "Base mise à jour en continu par l'État"};
   },
   noise(d) {
     const lvl = noiseLevel(d);
-    const LBL = {motorway: "Autoroute / voie rapide", primary: "Axe principal", secondary: "Axe secondaire", rail: "Voie ferrée", tram: "Tramway"};
+    const LBL = {motorway: "Autoroute / voie rapide", primary: "Route principale", secondary: "Route régionale ou grand axe urbain", rail: "Voie ferrée", tram: "Tramway"};
     const nearest = {}; d.ways.forEach(w => { if (!nearest[w.type] || w.dist < nearest[w.type].dist) nearest[w.type] = w; });
     const items = Object.values(nearest).sort((a, b) => a.dist - b.dist);
     const html = `
       <p class="muted" style="margin:0">Exposition probable au bruit des transports (estimation)</p>
       <p class="big"><span class="pill ${lvl.cls}" style="font-size:1.1rem">${lvl.label}</span></p>
-      <ul class="plain">${items.map(w => `<li>${esc(LBL[w.type] || w.type)}${w.name ? ` (${esc(w.name)})` : ""} à <strong>${fmtDist(w.dist)}</strong></li>`).join("") || `<li>Aucun grand axe routier ni voie ferrée à moins de ${CONFIG.radiusNoise} m.</li>`}
-      ${d.airports.map(a => `<li>Aéroport ${esc(a.name)} à <strong>${fmtDist(a.dist)}</strong></li>`).join("")}</ul>
-      <p class="muted" style="font-size:.82rem;margin:.4rem 0 0">Estimation fondée sur la distance aux infrastructures. Pour les niveaux en décibels, consultez les cartes de bruit stratégiques de votre département et le plan d'exposition au bruit des aéroports.</p>`;
-    return {html, extra: d.osmDate ? `Données OSM au ${fmtDate(d.osmDate)}` : "Données OSM"};
+      <ul class="plain">${items.map(w => `<li>${esc(LBL[w.type] || w.type)}${w.name ? ` (${esc(w.name)})` : ""} à <strong>${fmtDist(w.dist)}</strong></li>`).join("") || `<li>Aucun grand axe routier ni voie ferrée en surface à moins de ${CONFIG.radiusNoise} m.</li>`}
+      ${d.airports.map(a => `<li>Aéroport ${esc(a.name)} à <strong>${fmtDist(a.dist)}</strong>${a.peb ? ` : <a href="${esc(a.peb.replace(/^http:/, "https:"))}" target="_blank" rel="noopener">plan d'exposition au bruit (PDF)</a>` : ""}</li>`).join("")}</ul>
+      <p class="muted" style="font-size:.82rem;margin:.4rem 0 0">Estimation fondée sur la distance aux infrastructures (BD TOPO de l'IGN). Pour les niveaux en décibels, consultez les cartes de bruit stratégiques de votre département et, près d'un aéroport, son plan d'exposition au bruit.</p>`;
+    return {html, extra: d.updated ? `Tronçons mis à jour jusqu'au ${fmtDate(d.updated)}` : "BD TOPO, mise à jour continue"};
   },
   arcep(d) {
     const html = `
@@ -815,8 +851,8 @@ const RENDER = {
 function noiseLevel(d) {
   const m = (t) => Math.min(...d.ways.filter(w => w.type === t).map(w => w.dist), Infinity);
   const air = Math.min(...d.airports.map(a => a.dist), Infinity);
-  if (m("motorway") < 200 || m("rail") < 100 || air < 3000) return {label: "Élevée", cls: "bad", score: 2};
-  if (m("motorway") < 400 || m("primary") < 60 || m("rail") < 250 || m("secondary") < 25 || m("tram") < 30) return {label: "Modérée", cls: "warn", score: 1};
+  if (m("motorway") < 200 || m("rail") < 100 || m("primary") < 25 || air < 3000) return {label: "Élevée", cls: "bad", score: 2};
+  if (m("motorway") < 400 || m("primary") < 80 || m("rail") < 250 || m("secondary") < 25 || m("tram") < 30 || air < 6000) return {label: "Modérée", cls: "warn", score: 1};
   return {label: "Faible", cls: "ok", score: 0};
 }
 
@@ -843,13 +879,9 @@ function renderSynthesis() {
   } else if (R.dvf?.status === "empty") add(att, "dvf", "Pas de ventes de référence publiées", R.dvf.reason);
   // Risques
   if (R.georisques?.data) {
-    const d = R.georisques.data;
-    const important = ["inondation", "risqueCotier", "mouvementTerrain", "retraitGonflementArgile", "reculTraitCote", "feuForet", "avalanche", "icpe", "nucleaire", "pollutionSols", "ruptureBarrage", "risqueMinier", "canalisationsMatieresDangereuses", "radon", "seisme"];
-    const level = (x) => { const m = String(x.statut).match(/(\d)/); return m ? +m[1] : null; };
-    const significant = (x) => x.key === "seisme" ? (level(x) ?? x.level ?? 3) >= 3 : x.key === "radon" ? (level(x) ?? 3) >= 3 : true; // séisme : zones 3 à 5 ; radon : catégorie 3
-    const pres = [...d.natural, ...d.tech].filter(x => x.present && important.includes(x.key) && significant(x));
-    pres.forEach(x => add(att, "georisques", `Risque : ${x.label}`, x.statut));
-    if (!pres.length) add(fort, "georisques", "Aucun risque naturel ou technologique majeur signalé", "Selon Géorisques à cette adresse");
+    const d = R.georisques.data, al = d.items.filter(x => x.alert);
+    al.forEach(x => add(att, "georisques", `Risque : ${x.label}`, x.statut));
+    if (!al.length) add(fort, "georisques", "Aucun risque naturel ou technologique notable signalé", "Selon Géorisques, autour de cette adresse");
     if (d.catnatTotal >= 5) add(att, "georisques", `${d.catnatTotal} arrêtés de catastrophe naturelle dans la commune`, "Interrogez le vendeur sur les sinistres indemnisés (obligatoire dans l'état des risques)");
   }
   // Bruit
@@ -885,7 +917,8 @@ function renderSynthesis() {
 /* ============================ Carte ============================ */
 const LAYER_DEFS = {
   dvf: {label: "Ventes (DVF)", color: "#0b4f6c"}, dpe: {label: "DPE voisins", color: "#ec7d2d"},
-  schools: {label: "Écoles", color: "#7c3aed"}, noise: {label: "Axes bruyants", color: "#b91c1c"}
+  schools: {label: "Écoles", color: "#7c3aed"}, noise: {label: "Axes bruyants", color: "#b91c1c"},
+  georisques: {label: "Industries et sites pollués", color: "#78350f"}
 };
 function initMap() {
   const el = $("#map");
@@ -916,6 +949,7 @@ function updateMap(id) {
   if (id === "dvf") r.data.sales.forEach(s => dot(s.lat, s.lon, LAYER_DEFS.dvf.color, `<strong>${fmtEur(s.price)}</strong> – ${esc(s.type)} ${fmtInt(s.surface)} m²<br>${fmtInt(s.ppm)} €/m² · ${fmtDate(s.date)}<br>${esc(s.address)}`));
   if (id === "dpe") { const C = {A: "#008a5e", B: "#33a357", C: "#9dc76c", D: "#f2e33a", E: "#f2b33b", F: "#ec7d2d", G: "#d1281f"}; r.data.nearby.forEach(s => dot(s.lat, s.lon, C[s.label], `DPE <strong>${esc(s.label)}</strong>${s.conso ? ` – ${fmtInt(s.conso)} kWh/m²/an` : ""}<br>${esc(s.address || "")}<br>${fmtDate(s.date)}`)); }
   if (id === "schools") r.data.list.forEach(s => dot(s.lat, s.lon, LAYER_DEFS.schools.color, `<strong>${esc(s.name)}</strong><br>${esc(s.type || "")} · ${esc(s.statut || "")}<br>${fmtDist(s.dist)}`));
+  if (id === "georisques") (r.data.sites || []).forEach(x => dot(x.lat, x.lon, LAYER_DEFS.georisques.color, `<strong>${esc(x.name || "")}</strong><br>${x.kind === "icpe" ? "Installation classée" : x.kind === "sol" ? "Site ou sol pollué" : "Ancien site industriel (CASIAS)"}${x.info ? ` · ${esc(x.info)}` : ""}<br>${fmtDist(x.dist)}`));
   if (id === "noise") { r.data.ways.forEach(w => w.geom && L.polyline(w.geom.map(p => [p.lat, p.lon]), {color: LAYER_DEFS.noise.color, weight: w.type === "motorway" ? 6 : 4, opacity: .7}).bindPopup(`${esc(w.name || w.type)} – ${fmtDist(w.dist)}${tag}`).addTo(g)); r.data.airports.forEach(a => dot(a.lat, a.lon, LAYER_DEFS.noise.color, `Aéroport ${esc(a.name)} – ${fmtDist(a.dist)}`)); }
   state.layers[id] = g;
   const cb = document.querySelector(`[data-layer="${id}"]`);
