@@ -10,23 +10,28 @@ const OUT = process.env.OUT || __dirname;
 const LAT = 49.8941, LON = 2.2958;
 const ban = { type: 'FeatureCollection', features: [{ type: 'Feature', geometry: { type: 'Point', coordinates: [LON, LAT] },
   properties: { label: '8 Boulevard du Port 80000 Amiens', city: 'Amiens', postcode: '80000', citycode: '80021', id: '80021_6590_00008', type: 'housenumber', score: 0.97 } }] };
-const head = 'id_mutation,date_mutation,numero_disposition,nature_mutation,valeur_fonciere,adresse_numero,adresse_suffixe,adresse_nom_voie,adresse_code_voie,code_postal,code_commune,nom_commune,code_departement,ancien_code_commune,ancien_nom_commune,id_parcelle,ancien_id_parcelle,numero_volume,lot1_numero,lot1_surface_carrez,lot2_numero,lot2_surface_carrez,lot3_numero,lot3_surface_carrez,lot4_numero,lot4_surface_carrez,lot5_numero,lot5_surface_carrez,nombre_lots,code_type_local,type_local,surface_reelle_bati,nombre_pieces_principales,code_nature_culture,nature_culture,code_nature_culture_speciale,nature_culture_speciale,surface_terrain,longitude,latitude';
-const rows = [];
-for (let i = 0; i < 30; i++) {
-  const apt = i % 3 !== 0, s = apt ? 40 + i : 90 + i, d = `2025-${String(1 + (i % 12)).padStart(2, '0')}-15`;
-  const y = i < 15 ? '2025' : '2024';
-  rows.push(`2025-${i},${y}${d.slice(4)},1,Vente,${s * (2400 + i * 20)},${i + 1},,RUE TEST,0001,80000,80021,Amiens,80,,,80021000AB0${i},,,1,,,,,,,,,,1,${apt ? 2 : 1},${apt ? 'Appartement' : 'Maison'},${s},${apt ? 2 : 4},,,,,,${LON + (i - 15) * 0.0002},${LAT + (i % 5) * 0.0002}`);
-}
-rows.push(`2025-x,2025-06-01,1,Vente,9000,1,,RUE TEST,0001,80000,80021,Amiens,80,,,80021000AB099,,,,,,,,,,,,,0,3,Dépendance,,,,,,,,${LON},${LAT}`);
-const dvfCsv = head + '\n' + rows.join('\n') + '\n';
+// DVF+ open data (Cerema) : FeatureCollection de mutations, géométrie = parcelle(s)
+const sq = (lon, lat, d = 0.00005) => ({ type: 'MultiPolygon', coordinates: [[[[lon - d, lat - d], [lon + d, lat - d], [lon + d, lat + d], [lon - d, lat + d], [lon - d, lat - d]]]] });
+const mut = (i, code) => { const apt = code === 121, s = apt ? 40 + i : 90 + i;
+  return { type: 'Feature', geometry: sq(LON + (i - 15) * 0.0002, LAT + (i % 5) * 0.0002), properties: { datemut: `${i < 15 ? 2025 : 2024}-${String(1 + (i % 12)).padStart(2, '0')}-15`, libnatmut: 'Vente', vefa: false, valeurfonc: String(s * (2400 + i * 20)), nbcomm: 1, nbpar: 1, l_idpar: [`80021000AB0${100 + i}`], sbati: String(s), codtypbien: apt ? '121' : '111', libtypbien: apt ? 'UN APPARTEMENT' : 'UNE MAISON' } }; };
+const dvfApt = { type: 'FeatureCollection', count: 20, next: null, features: Array.from({ length: 30 }, (_, i) => i).filter(i => i % 3 !== 0).map(i => mut(i, 121)) };
+const dvfMai = { type: 'FeatureCollection', count: 10, next: null, features: Array.from({ length: 30 }, (_, i) => i).filter(i => i % 3 === 0).map(i => mut(i, 111)) };
 const dpeRow = (l, k, dist) => ({ etiquette_dpe: l, etiquette_ges: 'C', conso_5_usages_par_m2_ep: 100 + k * 30, surface_habitable_logement: 55, date_etablissement_dpe: `2025-0${1 + (k % 9)}-10`, type_batiment: 'appartement', adresse_ban: `${k} Rue Test 80000 Amiens`, identifiant_ban: dist === 0 ? '80021_6590_00008' : 'x', _geopoint: `${LAT + dist * 0.00001},${LON}` });
 const dpeNear = { total: 20, results: 'ABCDDDDEEEFFGCCDDEEG'.split('').map((l, k) => dpeRow(l, k, 50 + k * 5)) };
 const dpeSame = { total: 1, results: [dpeRow('D', 3, 0)] };
-const geor = { url: 'https://www.georisques.gouv.fr/mes-risques/connaitre-les-risques-pres-de-chez-moi/rapport2?form-adresse=true',
-  risquesNaturels: { inondation: { present: true, libelle: 'Inondation', libelleStatutCommune: 'Risque Existant', libelleStatutAdresse: 'Risque Existant' }, seisme: { present: true, libelle: 'Séisme', libelleStatutAdresse: 'Zone de sismicité : 1 (très faible)' }, radon: { present: false, libelle: 'Radon', libelleStatutAdresse: 'Potentiel faible' } },
-  risquesTechnologiques: { icpe: { present: false, libelle: 'ICPE', libelleStatutAdresse: 'Non concerné' } } };
-const catnat = { results: 7, data: [{ date_debut_evt: '1999-12-25', libelle_risque_jo: 'Inondations, coulées de boue et mouvements de terrain' }, { date_debut_evt: '2001-03-01', libelle_risque_jo: 'Inondations par remontées de nappe' }] };
-const overpass = { osm3s: { timestamp_osm_base: '2026-10-30T12:00:00Z' }, elements: [{ type: 'way', tags: { highway: 'primary', name: 'Boulevard du Port' }, geometry: [{ lat: LAT + 0.0003, lon: LON - 0.002 }, { lat: LAT + 0.0003, lon: LON + 0.002 }] }] };
+const page = (data) => ({ results: data.length, page: 1, total_pages: 1, data });
+const G = {
+  'gaspar/risques': page([{ risques_detail: [{ num_risque: '11', libelle_risque_long: 'Inondation' }, { num_risque: '13', libelle_risque_long: 'Séisme' }], code_insee: '80021' }]),
+  'gaspar/azi': page([]), 'gaspar/tri': page([{ libelle_tri: 'Amiens', code_insee: '80021' }]),
+  'zonage_sismique': page([{ code_zone: '1', zone_sismicite: '1 - TRES FAIBLE' }]), 'rga': { codeExposition: '1', exposition: 'Exposition faible' },
+  'radon': page([{ classe_potentiel: '1' }]),
+  'installations_classees': page([{ raisonSociale: 'USINE TEST', statutSeveso: 'Seveso seuil haut', etatActivite: 'En fonctionnement', latitude: LAT + 0.005, longitude: LON }]),
+  'ssp': { casias: page([]), instructions: page([]), conclusions_sis: page([]), conclusions_sup: page([]) },
+  'cavites': page([]), 'mvt': page([]),
+  'gaspar/catnat': { results: 7, data: [{ date_debut_evt: '25/12/1999', libelle_risque_jo: 'Inondations, coulées de boue et mouvements de terrain' }, { date_debut_evt: '01/03/2001', libelle_risque_jo: 'Inondations par remontées de nappe' }] } };
+// Géoplateforme WFS : BD TOPO (routes, voies ferrées) et PEB DGAC
+const roads = { type: 'FeatureCollection', features: [{ type: 'Feature', geometry: { type: 'LineString', coordinates: [[LON - 0.002, LAT + 0.0003], [LON + 0.002, LAT + 0.0003]] }, properties: { importance: '2', nature: 'Route à 2 chaussées', nom_voie_ban_gauche: 'Boulevard du Port', date_modification: '2026-05-01T00:00:00Z' } }] };
+const empty = { type: 'FeatureCollection', features: [] };
 const edu = { total_count: 3, results: [
   { nom_etablissement: 'École élémentaire Test', type_etablissement: 'Ecole', statut_public_prive: 'Public', etat: 'OUVERT', position: { lat: LAT + 0.002, lon: LON }, adresse_1: '1 rue', code_postal: '80000', nom_commune: 'Amiens', date_maj_ligne: '2026-10-31' },
   { nom_etablissement: 'Collège Test', type_etablissement: 'Collège', statut_public_prive: 'Public', etat: 'OUVERT', position: { lat: LAT + 0.006, lon: LON } },
@@ -50,7 +55,8 @@ const json = (route, body) => route.fulfill({ status: 200, contentType: 'applica
 async function setup(page, mode) {
   await page.route('**/*', async route => {
     const u = route.request().url();
-    if (u.startsWith('http://127.0.0.1')) return route.continue();
+    if (u.includes('/data/arcep/') && mode !== 'offline') return json(route, { date: '2026-06-30', communes: { '80021': { nom: 'Amiens', locaux: 91983, ftth: 89735, cable: 0, cuivre: 91982, thd_radio: 0, '4g_fixe': 91788, satellite: 91976, thd30: 91983, thd100: 91983, thd1g: 89735, inel_hd: 0 } } });
+    if (u.startsWith('http://127.0.0.1')) return mode === 'offline' && u.includes('/data/') ? route.abort() : route.continue();
     if (u.includes('cdnjs.cloudflare.com/ajax/libs/leaflet') && LEAFLET) {
       const file = u.endsWith('.css') ? 'leaflet.css' : 'leaflet.js';
       return route.fulfill({ status: 200, contentType: file.endsWith('css') ? 'text/css' : 'application/javascript', body: fs.readFileSync(path.join(LEAFLET, file)) });
@@ -58,11 +64,10 @@ async function setup(page, mode) {
     if (mode === 'offline') return route.abort();
     const cors = { 'access-control-allow-origin': '*' };
     if (u.includes('/geocodage/search') || u.includes('api-adresse')) return json(route, ban);
-    if (u.includes('geo-dvf')) return u.includes('/2025/') ? route.fulfill({ status: 200, headers: cors, contentType: 'text/csv', body: dvfCsv }) : route.fulfill({ status: 404, headers: cors, body: '' });
+    if (u.includes('dvf_opendata')) return json(route, u.includes('codtypbien=111') ? dvfMai : dvfApt);
     if (u.includes('dpe03existant')) return json(route, u.endsWith(',25') ? dpeSame : dpeNear);
-    if (u.includes('resultats_rapport_risque')) return json(route, geor);
-    if (u.includes('gaspar/catnat')) return json(route, catnat);
-    if (u.includes('overpass')) return json(route, overpass);
+    if (u.includes('georisques.gouv.fr/api/v1/')) { const k = u.split('/api/v1/')[1].split('?')[0]; return G[k] ? json(route, G[k]) : route.fulfill({ status: 404, headers: cors, body: '' }); }
+    if (u.includes('/wfs/')) return json(route, u.includes('troncon_de_route') ? roads : empty);
     if (u.includes('fr-en-annuaire-education')) return json(route, edu);
     if (u.includes('hubeau')) return json(route, hubeau);
     return route.fulfill({ status: 204, headers: cors, body: '' }); // tuiles, etc.
@@ -97,16 +102,18 @@ async function setup(page, mode) {
     await page.keyboard.press('Enter');
     await page.waitForFunction(() => !document.querySelector('#att-list').textContent.includes('Analyse en cours'), null, { timeout: 20000 });
     const cov = await page.locator('#coverage li').allTextContents();
-    check(await page.locator('#coverage .st.live').count() === 7, 'B: 7 sources réelles + Arcep en exemple → ' + cov.map(c => c.slice(0, 30)).join(' / '));
+    check(await page.locator('#coverage .st.live').count() === 8, 'B: 8 sources réelles → ' + cov.map(c => c.slice(0, 30)).join(' / '));
     const dvf = await page.textContent('#card-dvf'); check(/€/.test(dvf) && /30 ventes/.test(dvf), 'B: DVF agrégé (30 ventes, dépendance exclue)');
     check(/Classe D/.test(await page.textContent('#card-dpe')), 'B: DPE de l\'adresse (identifiant BAN)');
     check(/Inondation/.test(await page.textContent('#att-list')), 'B: risque inondation en point d\'attention');
     check(!/Séisme/.test(await page.textContent('#att-list')), 'B: séisme zone 1 non signalé');
     check(/Répartition des 20 DPE/.test(await page.textContent('#card-dpe')), 'B: répartition des DPE voisins');
     check(/7 arrêtés/.test(await page.textContent('#att-list')), 'B: arrêtés CatNat');
-    check(/Modérée/.test(await page.textContent('#card-noise')), 'B: bruit modéré (axe principal à ~33 m)');
+    check(/Modérée/.test(await page.textContent('#card-noise')), 'B: bruit modéré (route principale à ~33 m)');
+    check(/Seveso/.test(await page.textContent('#att-list')), 'B: installation Seveso à moins de 1 km signalée');
     check(!/Lycée fermé/.test(await page.textContent('#card-schools')), 'B: établissements fermés exclus');
     check(/1 non-conformité/.test(await page.textContent('#card-water')), 'B: Hub\'Eau dédoublonné par prélèvement');
+    check(/98 %/.test(await page.textContent('#card-arcep')), 'B: Arcep : 98 % de locaux raccordables à la fibre');
     check(await page.locator('.src').count() === 7 && /Consulté le/.test(await page.textContent('.src')), 'B: source + date sur chaque fiche');
     check(await page.locator('.leaflet-interactive').count() > 10, 'B: couches sur la carte');
     check(/lat=49\.894100/.test(page.url()), 'B: URL partageable');

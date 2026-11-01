@@ -331,7 +331,7 @@ const CONFIG = {
     wfs: "https://data.geopf.fr/wfs/ows", // Géoplateforme IGN : BD TOPO + PEB DGAC
     education: "https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-annuaire-education/records",
     hubeau: "https://hubeau.eaufrance.fr/api/v1/qualite_eau_potable/resultats_dis",
-    arcep: null // pas d'API publique par adresse : voir README (« Brancher Arcep »)
+    arcep: (dep) => `data/arcep/${dep}.json` // précalculé chaque mois par GitHub Actions (scripts/build_arcep.py)
   }
 };
 
@@ -341,7 +341,7 @@ const SOURCES = {
   dpe:   {name:"DPE logements existants (depuis 07/2021)", short:"Énergie (DPE)", producer:"ADEME", license:"Licence Ouverte 2.0", licenseUrl:"https://www.etalab.gouv.fr/licence-ouverte-open-licence/", url:"https://data.ademe.fr/datasets/dpe03existant", what:"Diagnostics énergétiques"},
   georisques:{name:"Géorisques (API v1)", short:"Risques", producer:"Ministère de la Transition écologique / BRGM", license:"Licence Ouverte 2.0", licenseUrl:"https://www.etalab.gouv.fr/licence-ouverte-open-licence/", url:"https://www.georisques.gouv.fr/doc-api", what:"Risques naturels et technologiques, arrêtés CatNat"},
   noise: {name:"BD TOPO® et plans d'exposition au bruit (estimation du bruit)", short:"Bruit", producer:"IGN / DGAC (Géoplateforme)", license:"Licence Ouverte 2.0", licenseUrl:"https://www.etalab.gouv.fr/licence-ouverte-open-licence/", url:"https://geoservices.ign.fr/bdtopo", what:"Grands axes, voies ferrées, aéroports avec PEB"},
-  arcep: {name:"Arcep – Ma connexion internet", short:"Connexion", producer:"Arcep", license:"Licence Ouverte 2.0", licenseUrl:"https://www.etalab.gouv.fr/licence-ouverte-open-licence/", url:"https://maconnexioninternet.arcep.fr", what:"Fibre, ADSL, couverture mobile"},
+  arcep: {name:"Arcep – Ma connexion internet (statistiques communales)", short:"Connexion", producer:"Arcep", license:"Licence Ouverte 2.0", licenseUrl:"https://www.etalab.gouv.fr/licence-ouverte-open-licence/", url:"https://www.data.gouv.fr/datasets/ma-connexion-internet", what:"Fibre, câble, cuivre, 4G fixe, débits"},
   schools:{name:"Annuaire de l'éducation", short:"Écoles", producer:"Ministère de l'Éducation nationale", license:"Licence Ouverte 2.0", licenseUrl:"https://www.etalab.gouv.fr/licence-ouverte-open-licence/", url:"https://data.education.gouv.fr/explore/dataset/fr-en-annuaire-education/", what:"Écoles, collèges, lycées"},
   water: {name:"Hub'Eau – qualité de l'eau potable", short:"Eau", producer:"Ministère de la Santé (ARS) / OFB", license:"Licence Ouverte 2.0", licenseUrl:"https://www.etalab.gouv.fr/licence-ouverte-open-licence/", url:"https://hubeau.eaufrance.fr/page/api-qualite-eau-potable", what:"Conformité de l'eau du robinet"}
 };
@@ -477,7 +477,7 @@ const SAMPLE = {
     return {ways: [mk("primary", "Avenue d'exemple", 120), mk("rail", "Voie ferrée d'exemple", 310)], airports: [], updated: null};
   },
   arcep() {
-    return {fibre: {eligible: true, operators: 4, since: "2021"}, dsl: {maxMbps: 15}, mobile: [{op: "Opérateur A", g4: "Très bonne couverture", g5: true}, {op: "Opérateur B", g4: "Très bonne couverture", g5: true}, {op: "Opérateur C", g4: "Bonne couverture", g5: false}, {op: "Opérateur D", g4: "Bonne couverture", g5: true}]};
+    return {nom: "Commune d'exemple", locaux: 12000, ftth: 11280, cable: 0, cuivre: 11950, thd_radio: 0, "4g_fixe": 9000, satellite: 12000, thd30: 11900, thd100: 11500, thd1g: 11280, inel_hd: 0, date: null};
   },
   schools(ctx) {
     const r = rng(this.seed(ctx, 6)), list = [];
@@ -641,10 +641,12 @@ const CONNECTORS = {
     return {ways, airports, updated};
   },
 
-  async arcep() {
-    // Pas d'API publique interrogeable par adresse. Voir README pour le branchement
-    // (fichiers trimestriels « immeubles » IPE + couverture mobile « Mon réseau mobile »).
-    throw new SourceError("aucune API publique par adresse : prototype alimenté par des données d'exemple", "nosource");
+  async arcep(ctx) {
+    if (!ctx.citycode) throw new SourceError("code commune inconnu");
+    const j = await getJSON(CONFIG.endpoints.arcep(depFromCity(ctx.citycode)));
+    const c = j.communes[ctx.citycode] || j.communes[mainCityCode(ctx.citycode)];
+    if (!c) throw new SourceError("commune absente des statistiques de l'Arcep", "empty");
+    return {...c, date: j.date};
   },
 
   async schools(ctx) {
@@ -820,12 +822,19 @@ const RENDER = {
     return {html, extra: d.updated ? `Tronçons mis à jour jusqu'au ${fmtDate(d.updated)}` : "BD TOPO, mise à jour continue"};
   },
   arcep(d) {
+    const pct = (n) => d.locaux ? Math.round(n / d.locaux * 1000) / 10 : null, f = (n) => pct(n) == null ? "—" : `${String(pct(n)).replace(".", ",")} %`;
     const html = `
-      <div class="kpis"><div class="kpi"><div class="l">Fibre (FttH)</div><div class="v">${d.fibre.eligible ? "Raccordable" : "Non raccordable"}</div><div class="l">${d.fibre.operators} opérateur(s)</div></div>
-      <div class="kpi"><div class="l">Cuivre (ADSL/VDSL)</div><div class="v">≤ ${d.dsl.maxMbps} Mbit/s</div></div></div>
-      <table><caption class="sr-only">Couverture mobile par opérateur</caption><thead><tr><th scope="col">Opérateur</th><th scope="col">4G à l'extérieur</th><th scope="col">5G</th></tr></thead><tbody>${d.mobile.map(m => `<tr><td>${esc(m.op)}</td><td>${esc(m.g4)}</td><td>${m.g5 ? "Oui" : "Non"}</td></tr>`).join("")}</tbody></table>
-      <p style="font-size:.9rem;margin:.5rem 0 0">Vérifiez l'éligibilité réelle sur <a href="https://maconnexioninternet.arcep.fr" target="_blank" rel="noopener">Ma connexion internet</a>.</p>`;
-    return {html, extra: "Arcep publie ces données chaque trimestre"};
+      <p class="muted" style="margin:0">Part des logements et locaux de la commune${d.nom ? ` (${esc(d.nom)})` : ""} raccordables à la fibre</p>
+      <p class="big">${f(d.ftth)}</p>
+      <div class="kpis">
+        <div class="kpi"><div class="l">≥ 100 Mbit/s</div><div class="v">${f(d.thd100)}</div><div class="l">toutes technologies</div></div>
+        <div class="kpi"><div class="l">≥ 1 Gbit/s</div><div class="v">${f(d.thd1g)}</div></div>
+        <div class="kpi"><div class="l">Sans bon haut débit</div><div class="v">${f(d.inel_hd)}</div><div class="l">moins de 3 Mbit/s</div></div>
+      </div>
+      <table><caption class="sr-only">Éligibilité par technologie dans la commune</caption><thead><tr><th scope="col">Technologie</th><th scope="col" class="num">Locaux éligibles</th></tr></thead><tbody>
+        ${[["Fibre (FttH)", d.ftth], ["Câble", d.cable], ["Cuivre (ADSL/VDSL)", d.cuivre], ["4G fixe", d["4g_fixe"]], ["THD radio", d.thd_radio], ["Satellite", d.satellite]].map(([l, n]) => `<tr><td>${l}</td><td class="num">${f(n)}</td></tr>`).join("")}</tbody></table>
+      <p style="font-size:.9rem;margin:.5rem 0 0">Statistique à l'échelle de la commune (${fmtInt(d.locaux)} locaux). Vérifiez l'éligibilité exacte de l'adresse sur <a href="https://maconnexioninternet.arcep.fr" target="_blank" rel="noopener">Ma connexion internet</a> et la couverture mobile sur <a href="https://monreseaumobile.arcep.fr" target="_blank" rel="noopener">Mon réseau mobile</a>.</p>`;
+    return {html, extra: d.date ? `Données au ${fmtDate(d.date)}` : "Publication trimestrielle"};
   },
   schools(d) {
     const isPrim = (s) => /ecole|école/i.test(s.type || ""), isCol = (s) => /coll/i.test(s.type || ""), isLyc = (s) => /lyc/i.test(s.type || "");
@@ -892,9 +901,10 @@ function renderSynthesis() {
     else add(fort, "noise", "Environnement probablement calme", `Aucun grand axe à moins de ${CONFIG.radiusNoise} m`);
   }
   // Connexion
-  if (R.arcep?.data) {
-    if (R.arcep.data.fibre.eligible) add(fort, "arcep", "Fibre optique raccordable", `${R.arcep.data.fibre.operators} opérateurs`);
-    else add(att, "arcep", "Fibre non raccordable", "Télétravail : vérifiez les alternatives (4G/5G fixe, satellite)");
+  if (R.arcep?.data && R.arcep.data.locaux) {
+    const p = R.arcep.data.ftth / R.arcep.data.locaux * 100;
+    if (p >= 90) add(fort, "arcep", `Fibre : ${Math.round(p)} % des locaux de la commune raccordables`, "Vérifiez l'adresse exacte sur Ma connexion internet");
+    else if (p < 60) add(att, "arcep", `Fibre : seulement ${Math.round(p)} % des locaux de la commune raccordables`, "Télétravail : vérifiez l'éligibilité exacte de l'adresse");
   }
   // Écoles
   if (R.schools?.data) {

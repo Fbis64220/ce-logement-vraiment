@@ -1,0 +1,24 @@
+name: Données Arcep (connexion internet)
+# Les statistiques communales de l'Arcep sont publiées chaque trimestre ;
+# une vérification mensuelle suffit à rester à jour.
+on:
+  schedule:
+    - cron: "23 5 3 * *"
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Construire data/arcep/*.json
+        run: python3 scripts/build_arcep.py
+      - name: Publier si les données ont changé
+        run: |
+          git add data/arcep
+          if git diff --cached --quiet; then echo "Aucun changement"; exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898900+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Données Arcep : mise à jour $(python3 -c "import json;print(json.load(open('data/arcep/index.json'))['date'])")"
+          git push
