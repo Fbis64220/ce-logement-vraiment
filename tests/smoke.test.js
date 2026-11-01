@@ -113,7 +113,7 @@ async function setup(page, mode) {
     check(/Seveso/.test(await page.textContent('#att-list')), 'B: installation Seveso à moins de 1 km signalée');
     check(!/Lycée fermé/.test(await page.textContent('#card-schools')), 'B: établissements fermés exclus');
     check(/1 non-conformité/.test(await page.textContent('#card-water')), 'B: Hub\'Eau dédoublonné par prélèvement');
-    check(/98 %/.test(await page.textContent('#card-arcep')), 'B: Arcep : 98 % de locaux raccordables à la fibre');
+    check(/97,6 %/.test(await page.textContent('#card-arcep')), 'B: Arcep : 97,6 % de locaux raccordables à la fibre');
     check(await page.locator('.src').count() === 7 && /Consulté le/.test(await page.textContent('.src')), 'B: source + date sur chaque fiche');
     check(await page.locator('.leaflet-interactive').count() > 10, 'B: couches sur la carte');
     check(/lat=49\.894100/.test(page.url()), 'B: URL partageable');
