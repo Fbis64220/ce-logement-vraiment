@@ -4,148 +4,199 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Ce logement, vraiment</title>
-<meta name="description" content="Le rapport complet d'une adresse à partir de données publiques ouvertes : prix des ventes voisines, DPE, risques, bruit, connexion, écoles, qualité de l'eau.">
+<meta name="description" content="Le rapport complet d'une adresse à partir de données publiques ouvertes : prix des ventes voisines, DPE, risques, bruit, transports, commerces, connexion, écoles, qualité de l'eau.">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <style>
 :root{
-  --bg:#f6f5f1; --surface:#ffffff; --surface-2:#efede6; --ink:#1b1d1f; --ink-2:#4a4f55; --line:#d8d5cc;
-  --brand:#0b4f6c; --brand-ink:#ffffff; --focus:#c2410c;
-  --ok:#166534; --ok-bg:#dcfce7; --warn:#92400e; --warn-bg:#fef3c7; --bad:#991b1b; --bad-bg:#fee2e2;
+  --bg:#f5f4ef; --surface:#ffffff; --surface-2:#f0eee7; --surface-3:#e7e4da; --ink:#17191c; --ink-2:#4b5158; --ink-3:#6b7178; --line:#dcd8cd;
+  --brand:#0b4f6c; --brand-2:#0e6b8f; --brand-soft:#e3eff4; --brand-ink:#ffffff; --focus:#c2410c;
+  --ok:#166534; --ok-bg:#dcfce7; --ok-line:#86efac; --warn:#92400e; --warn-bg:#fef3c7; --bad:#991b1b; --bad-bg:#fee2e2; --bad-line:#fca5a5;
   --info:#1e3a8a; --info-bg:#dbeafe;
-  --radius:12px; --shadow:0 1px 2px rgba(0,0,0,.06),0 4px 16px rgba(0,0,0,.05);
-  font-family: system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --radius:14px; --radius-s:10px; --shadow:0 1px 2px rgba(23,25,28,.05),0 6px 20px rgba(23,25,28,.05);
+  font-family: ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
   color-scheme: light;
 }
 *{box-sizing:border-box}
-html{-webkit-text-size-adjust:100%}
-body{margin:0;background:var(--bg);color:var(--ink);line-height:1.5;font-size:16px}
+html{-webkit-text-size-adjust:100%;scroll-behavior:smooth;scroll-padding-top:72px}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+body{margin:0;background:var(--bg);color:var(--ink);line-height:1.55;font-size:16px}
 a{color:var(--brand)}
 a:hover{text-decoration-thickness:2px}
 :focus-visible{outline:3px solid var(--focus);outline-offset:2px;border-radius:4px}
-.skip{position:absolute;left:-999px;top:0;background:var(--brand);color:#fff;padding:.6rem 1rem;z-index:1000}
+.skip{position:absolute;left:-999px;top:0;background:var(--brand);color:#fff;padding:.6rem 1rem;z-index:2000}
 .skip:focus{left:8px;top:8px}
-.wrap{max-width:1120px;margin:0 auto;padding:0 16px}
+.wrap{max-width:1160px;margin:0 auto;padding:0 16px}
 .sr-only{position:absolute!important;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.muted{color:var(--ink-2)}
+.ico{width:20px;height:20px;flex:none;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 
-/* Header */
+/* ---------- En-tête ---------- */
 .top{background:var(--surface);border-bottom:1px solid var(--line)}
-.top .wrap{display:flex;align-items:center;justify-content:space-between;gap:1rem;min-height:56px}
-.logo{font-weight:800;letter-spacing:-.01em;color:var(--ink);text-decoration:none;font-size:1.1rem}
+.top .wrap{display:flex;align-items:center;justify-content:space-between;gap:1rem;min-height:58px}
+.logo{font-weight:800;letter-spacing:-.02em;color:var(--ink);text-decoration:none;font-size:1.12rem;display:inline-flex;align-items:center;gap:.5rem}
+.logo-mark{width:28px;height:28px;border-radius:8px;background:var(--brand);display:grid;place-items:center;color:#fff}
+.logo-mark .ico{width:17px;height:17px}
 .logo span{color:var(--brand)}
-.proto{font-size:.8rem;color:var(--ink-2);border:1px solid var(--line);border-radius:999px;padding:.15rem .6rem;white-space:nowrap}
+.logo .logo-mark{color:#fff}
+h2[tabindex="-1"]:focus{outline:none}
+.proto{font-size:.8rem;color:var(--ink-2);border:1px solid var(--line);border-radius:999px;padding:.15rem .65rem;white-space:nowrap}
 
-/* Hero */
-.hero{padding:2.2rem 0 1.4rem}
-.hero h1{font-size:clamp(1.6rem,4.2vw,2.5rem);line-height:1.15;margin:0 0 .6rem;letter-spacing:-.02em;max-width:22ch}
-.hero p.lead{font-size:1.1rem;color:var(--ink-2);margin:0 0 1.4rem;max-width:62ch}
-
-/* Search / combobox */
-.search{position:relative;max-width:720px}
-.search label{display:block;font-weight:600;margin-bottom:.35rem}
+/* ---------- Accueil ---------- */
+.hero{padding:2.6rem 0 1.6rem;background:linear-gradient(180deg,var(--surface) 0%,var(--bg) 100%)}
+.eyebrow{display:inline-block;font-size:.8rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--brand);margin:0 0 .6rem}
+.hero h1{font-size:clamp(1.75rem,4.4vw,2.7rem);line-height:1.12;margin:0 0 .7rem;letter-spacing:-.025em;max-width:20ch}
+.hero p.lead{font-size:1.08rem;color:var(--ink-2);margin:0 0 1.5rem;max-width:62ch}
+.search{position:relative;max-width:760px;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:1rem;box-shadow:var(--shadow)}
+.search label{display:block;font-weight:700;margin-bottom:.4rem}
 .search-row{display:flex;gap:.5rem}
-.search input{flex:1;min-width:0;font:inherit;font-size:1.05rem;padding:.8rem 1rem;border:2px solid #6b7280;border-radius:10px;background:#fff;color:var(--ink)}
+.search input{flex:1;min-width:0;font:inherit;font-size:1.05rem;padding:.8rem 1rem;border:2px solid #6b7280;border-radius:var(--radius-s);background:#fff;color:var(--ink)}
 .search input:focus{border-color:var(--brand);outline:3px solid var(--focus);outline-offset:1px}
-.btn{font:inherit;font-weight:600;border-radius:10px;border:2px solid var(--brand);background:var(--brand);color:var(--brand-ink);padding:.7rem 1.1rem;cursor:pointer;white-space:nowrap;text-decoration:none;display:inline-flex;align-items:center;gap:.4rem}
-.btn:hover{filter:brightness(1.1)}
-.btn.ghost{background:transparent;color:var(--brand)}
-.btn.small{padding:.4rem .75rem;font-size:.9rem}
-.hint{font-size:.9rem;color:var(--ink-2);margin:.5rem 0 0}
-.listbox{position:absolute;left:0;right:0;top:100%;margin:.25rem 0 0;padding:.25rem;list-style:none;background:#fff;border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow);z-index:1001;max-height:320px;overflow:auto}
+.btn{font:inherit;font-weight:650;border-radius:var(--radius-s);border:2px solid var(--brand);background:var(--brand);color:var(--brand-ink);padding:.7rem 1.15rem;cursor:pointer;white-space:nowrap;text-decoration:none;display:inline-flex;align-items:center;gap:.45rem;transition:background .15s}
+.btn:hover{background:var(--brand-2);border-color:var(--brand-2)}
+.btn.ghost{background:var(--surface);color:var(--brand)}
+.btn.ghost:hover{background:var(--brand-soft)}
+.btn.small{padding:.42rem .8rem;font-size:.9rem}
+.btn .ico{width:17px;height:17px}
+.hint{font-size:.88rem;color:var(--ink-2);margin:.5rem 0 0}
+.listbox{position:absolute;left:1rem;right:1rem;top:calc(100% - .6rem);margin:0;padding:.3rem;list-style:none;background:#fff;border:1px solid var(--line);border-radius:var(--radius-s);box-shadow:0 12px 32px rgba(0,0,0,.14);z-index:1200;max-height:320px;overflow:auto}
 .listbox[hidden]{display:none}
 .listbox li{padding:.6rem .75rem;border-radius:8px;cursor:pointer}
 .listbox li small{display:block;color:var(--ink-2)}
-.listbox li[aria-selected="true"],.listbox li:hover{background:var(--info-bg)}
-.examples{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:.8rem;align-items:center}
-.examples span{font-size:.9rem;color:var(--ink-2)}
-.chip{font:inherit;font-size:.9rem;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:999px;padding:.35rem .8rem;cursor:pointer}
-.chip:hover{border-color:var(--brand)}
-.msg{margin-top:.8rem;padding:.75rem 1rem;border-radius:10px;font-size:.95rem}
-.msg.error{background:var(--bad-bg);color:var(--bad);border:1px solid #fca5a5}
+.listbox li[aria-selected="true"],.listbox li:hover{background:var(--brand-soft)}
+.examples{display:flex;flex-wrap:wrap;gap:.45rem;margin-top:.8rem;align-items:center}
+.examples span{font-size:.88rem;color:var(--ink-2)}
+.chip{font:inherit;font-size:.88rem;border:1px solid var(--line);background:var(--surface-2);color:var(--ink);border-radius:999px;padding:.32rem .8rem;cursor:pointer}
+.chip:hover{border-color:var(--brand);background:var(--brand-soft)}
+.msg{margin-top:.8rem;padding:.75rem 1rem;border-radius:var(--radius-s);font-size:.95rem}
+.msg.error{background:var(--bad-bg);color:var(--bad);border:1px solid var(--bad-line)}
 .msg.info{background:var(--info-bg);color:var(--info);border:1px solid #93c5fd}
 
-/* Value prop */
-.value{padding:1rem 0 2.5rem}
-.value h2,.section-title{font-size:1.25rem;margin:0 0 .3rem}
+/* Recherche compacte quand un rapport est affiché */
+.has-report .hero{padding:.9rem 0;background:var(--surface);border-bottom:1px solid var(--line)}
+.has-report .hero h1,.has-report .hero .lead,.has-report .hero .eyebrow,.has-report .hint,.has-report .examples{display:none}
+.has-report .search{box-shadow:none;border:0;padding:0;max-width:none}
+.has-report .search label{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}
+.has-report .search input{padding:.55rem .85rem;font-size:1rem}
+.has-report .search .btn{padding:.5rem 1rem}
+.has-report .listbox{left:0;right:0;top:100%;margin-top:.3rem}
+
+.value{padding:1.4rem 0 3rem}
+.value h2{font-size:1.3rem;margin:0 0 .3rem;letter-spacing:-.01em}
 .value .sub{color:var(--ink-2);margin:0 0 1rem}
-.sources-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:.6rem;margin:0;padding:0;list-style:none}
-.sources-grid li{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:.7rem .8rem}
+.sources-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:.6rem;margin:0;padding:0;list-style:none}
+.sources-grid li{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-s);padding:.75rem .85rem;display:flex;gap:.65rem;align-items:flex-start}
+.sources-grid .ico-box{width:34px;height:34px;border-radius:9px;background:var(--brand-soft);color:var(--brand);display:grid;place-items:center;flex:none}
 .sources-grid strong{display:block;font-size:.95rem}
-.sources-grid span{font-size:.85rem;color:var(--ink-2)}
-.compare{margin-top:1.5rem;overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius)}
+.sources-grid span.t{font-size:.84rem;color:var(--ink-2)}
+.compare{margin-top:1.6rem;overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius)}
 .compare table{border-collapse:collapse;width:100%;min-width:640px;font-size:.92rem}
-.compare th,.compare td{padding:.55rem .7rem;border-bottom:1px solid var(--line);text-align:center}
+.compare th,.compare td{padding:.6rem .75rem;border-bottom:1px solid var(--line);text-align:center}
 .compare th:first-child,.compare td:first-child{text-align:left}
 .compare thead th{background:var(--surface-2);font-weight:700}
-.compare td.us,.compare th.us{background:#e6f0f4;font-weight:700}
-.compare caption{text-align:left;padding:.8rem .8rem .2rem;font-weight:700}
+.compare td.us,.compare th.us{background:var(--brand-soft);font-weight:700}
+.compare caption{text-align:left;padding:.85rem .8rem .25rem;font-weight:700}
 .yes{color:var(--ok)} .no{color:#6b7280} .part{color:var(--warn)}
-.how{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:1rem;margin-top:1.5rem}
-.how div{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:1rem}
+.how{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:1rem;margin-top:1.6rem}
+.how div{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:1rem 1.1rem}
 .how h3{margin:.1rem 0 .3rem;font-size:1rem}
 .how p{margin:0;color:var(--ink-2);font-size:.93rem}
 
-/* Report */
-.report{padding:1.5rem 0 3rem}
-.report-head{display:flex;flex-wrap:wrap;justify-content:space-between;gap:1rem;align-items:flex-start;margin-bottom:1rem}
-.report-head h2{margin:0;font-size:clamp(1.3rem,3vw,1.8rem);letter-spacing:-.01em}
-.report-head .meta{color:var(--ink-2);font-size:.9rem;margin:.2rem 0 0}
+/* ---------- Rapport ---------- */
+.report{padding:1.4rem 0 3rem}
+.report-head{display:flex;flex-wrap:wrap;justify-content:space-between;gap:1rem;align-items:flex-end;margin-bottom:1rem}
+.report-head .kicker{margin:0;font-size:.8rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--brand)}
+.report-head h2{margin:.1rem 0 0;font-size:clamp(1.4rem,3.2vw,2rem);letter-spacing:-.02em;line-height:1.15}
+.report-head .meta{color:var(--ink-2);font-size:.9rem;margin:.3rem 0 0;display:flex;flex-wrap:wrap;gap:.35rem .8rem;align-items:center}
+.cov-chip{display:inline-flex;align-items:center;gap:.35rem;font-size:.82rem;font-weight:650;border-radius:999px;padding:.12rem .6rem;text-decoration:none;background:var(--surface-3);color:var(--ink)}
+.cov-chip.ok{background:var(--ok-bg);color:var(--ok)} .cov-chip.partial{background:var(--warn-bg);color:var(--warn)}
 .actions{display:flex;flex-wrap:wrap;gap:.5rem}
-.banner{padding:.8rem 1rem;border-radius:10px;margin:0 0 1rem;font-size:.95rem}
+.banner{padding:.8rem 1rem;border-radius:var(--radius-s);margin:0 0 1rem;font-size:.95rem}
 .banner.missing{background:var(--warn-bg);border:1px solid #fcd34d;color:#78350f}
-.coverage{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:1rem;margin-bottom:1rem}
-.coverage h3{margin:0 0 .6rem;font-size:1rem}
-.coverage ul{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:.4rem}
-.coverage li{display:flex;gap:.5rem;align-items:flex-start;font-size:.88rem;padding:.35rem .5rem;border-radius:8px;background:var(--surface-2)}
-.st{font-weight:700;font-size:.75rem;border-radius:999px;padding:.05rem .5rem;white-space:nowrap;flex:none}
+
+.report-nav{position:sticky;top:0;z-index:1100;background:rgba(245,244,239,.94);backdrop-filter:saturate(1.4) blur(8px);-webkit-backdrop-filter:saturate(1.4) blur(8px);border-bottom:1px solid var(--line);margin:0 -16px 1.2rem;padding:.5rem 16px}
+.report-nav ul{list-style:none;margin:0;padding:0;display:flex;gap:.35rem;overflow-x:auto;scrollbar-width:none}
+.report-nav ul::-webkit-scrollbar{display:none}
+.report-nav a{display:inline-block;white-space:nowrap;text-decoration:none;color:var(--ink-2);font-weight:600;font-size:.9rem;padding:.38rem .8rem;border-radius:999px}
+.report-nav a:hover{background:var(--surface-3);color:var(--ink)}
+.report-nav a[aria-current="true"]{background:var(--brand);color:#fff}
+
+.block{margin-bottom:1.6rem}
+.block-title{display:flex;align-items:center;gap:.6rem;font-size:1.25rem;letter-spacing:-.01em;margin:0 0 .8rem}
+.block-title .ico-box{width:34px;height:34px;border-radius:10px;background:var(--brand);color:#fff;display:grid;place-items:center}
+.block-title .ico-box .ico{width:18px;height:18px}
+.block-title small{font-size:.85rem;font-weight:500;color:var(--ink-2);margin-left:auto}
+
+/* Chiffres clés */
+.keyfigs{display:grid;grid-template-columns:repeat(4,1fr);gap:.7rem;margin:0 0 1rem;padding:0;list-style:none}
+.kf{display:flex;flex-direction:column;gap:.15rem;height:100%;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:.8rem .9rem;text-decoration:none;color:var(--ink);box-shadow:var(--shadow);border-top:4px solid var(--surface-3);transition:transform .12s,box-shadow .12s}
+.kf:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(23,25,28,.09)}
+.kf .l{font-size:.8rem;color:var(--ink-2);display:flex;align-items:center;gap:.35rem;font-weight:600}
+.kf .l .ico{width:15px;height:15px}
+.kf .v{font-size:1.45rem;font-weight:800;letter-spacing:-.02em;line-height:1.15}
+.kf .s{font-size:.8rem;color:var(--ink-2);overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.kf.good{border-top-color:#22c55e} .kf.good .v{color:var(--ok)}
+.kf.bad{border-top-color:#ef4444} .kf.bad .v{color:var(--bad)}
+.kf.mid{border-top-color:#f59e0b} .kf.mid .v{color:var(--warn)}
+.kf.na .v{color:var(--ink-3);font-size:1.05rem}
+.kf.loading .v{color:var(--ink-3)}
+@media (prefers-reduced-motion:reduce){.kf{transition:none}.kf:hover{transform:none}}
+
+.synth{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+.synth section{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:1rem;box-shadow:var(--shadow)}
+.synth h3{margin:0 0 .7rem;font-size:1.05rem;display:flex;align-items:center;gap:.5rem}
+.synth h3 .count{margin-left:auto;font-size:.82rem;border-radius:999px;padding:.05rem .55rem;font-weight:700}
+.synth .att h3{color:var(--bad)} .synth .att .count{background:var(--bad-bg)}
+.synth .fort h3{color:var(--ok)} .synth .fort .count{background:var(--ok-bg)}
+.synth ul{margin:0;padding:0;list-style:none;display:grid;gap:.45rem}
+.synth li{padding:.55rem .75rem;border-radius:var(--radius-s);font-size:.95rem}
+.synth .att li{background:#fef6f6;border-left:4px solid var(--bad)}
+.synth .fort li{background:#f3fbf5;border-left:4px solid var(--ok)}
+.synth li small{display:block;color:var(--ink-2);font-size:.8rem}
+.synth li.pending{background:none;border:0;color:var(--ink-2)}
+
+.map-wrap{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:1rem;box-shadow:var(--shadow)}
+#map{height:440px;border-radius:var(--radius-s);border:1px solid var(--line);background:#e5e7eb}
+.legend{display:flex;flex-wrap:wrap;gap:.4rem 1rem;margin-top:.6rem;font-size:.85rem;color:var(--ink-2)}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:50%;margin-right:.3rem;vertical-align:-1px;border:1px solid rgba(0,0,0,.3)}
+.layer-toggles{display:flex;flex-wrap:wrap;gap:.4rem;margin:0 0 .7rem}
+.layer-toggles label{display:inline-flex;align-items:center;gap:.4rem;cursor:pointer;font-size:.88rem;border:1px solid var(--line);border-radius:999px;padding:.25rem .7rem;background:var(--surface-2)}
+.layer-toggles label:has(input:checked){background:var(--brand-soft);border-color:var(--brand)}
+.layer-toggles input{width:16px;height:16px;accent-color:var(--brand);margin:0}
+.layer-toggles i{display:inline-block;width:10px;height:10px;border-radius:50%}
+
+/* Fiches */
+.cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1rem;align-items:start}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:1.05rem 1.1rem .85rem;display:flex;flex-direction:column;box-shadow:var(--shadow);min-width:0}
+.card h3{margin:0 0 .7rem;font-size:1.08rem;display:flex;align-items:center;gap:.55rem}
+.card h3 .ico-box{width:30px;height:30px;border-radius:9px;background:var(--brand-soft);color:var(--brand);display:grid;place-items:center;flex:none}
+.card h3 .ico{width:17px;height:17px}
+.card .body{flex:1;min-width:0;overflow-x:auto}
+.big{font-size:1.75rem;font-weight:800;letter-spacing:-.025em;line-height:1.1;margin:.1rem 0 .5rem}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(125px,1fr));gap:.55rem;margin:.3rem 0 .8rem}
+.kpi{background:var(--surface-2);border-radius:var(--radius-s);padding:.55rem .7rem}
+.kpi .l{font-size:.78rem;color:var(--ink-2)}
+.kpi .v{font-size:1.15rem;font-weight:750}
+.card table{width:100%;border-collapse:collapse;font-size:.88rem}
+.card th,.card td{text-align:left;padding:.4rem .3rem;border-bottom:1px solid var(--line);vertical-align:top}
+.card th{font-weight:600;color:var(--ink-2);font-size:.78rem;text-transform:uppercase;letter-spacing:.03em}
+.card td.num,.card th.num{text-align:right;white-space:nowrap}
+.card tbody tr:last-child td{border-bottom:0}
+.src{margin:.9rem 0 0;padding-top:.6rem;border-top:1px dashed var(--line);font-size:.78rem;color:var(--ink-2)}
+.src .st{margin-right:.35rem}
+.card-msg{padding:.7rem .85rem;border-radius:var(--radius-s);font-size:.92rem;margin:.2rem 0 .6rem}
+.card-msg.error{background:var(--bad-bg);color:var(--bad)}
+.card-msg.empty{background:var(--surface-2);color:var(--ink)}
+.st{font-weight:700;font-size:.74rem;border-radius:999px;padding:.05rem .5rem;white-space:nowrap;flex:none;display:inline-block}
 .st.live{background:var(--ok-bg);color:var(--ok)}
 .st.error{background:var(--bad-bg);color:var(--bad)}
 .st.loading{background:var(--info-bg);color:var(--info)}
 .st.empty{background:#e5e7eb;color:#374151}
-
-.synth{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem}
-.synth section{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:1rem}
-.synth h3{margin:0 0 .6rem;font-size:1.05rem;display:flex;align-items:center;gap:.5rem}
-.synth ul{margin:0;padding:0;list-style:none;display:grid;gap:.45rem}
-.synth li{padding:.55rem .7rem;border-radius:8px;font-size:.95rem}
-.synth .att li{background:var(--bad-bg);border-left:4px solid var(--bad)}
-.synth .fort li{background:var(--ok-bg);border-left:4px solid var(--ok)}
-.synth li small{display:block;color:var(--ink-2);font-size:.8rem}
-.tag{font-size:.72rem;font-weight:700;background:var(--warn-bg);color:var(--warn);border-radius:4px;padding:0 .35rem;margin-left:.3rem;white-space:nowrap}
-
-.map-wrap{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:1rem;margin-bottom:1rem}
-#map{height:420px;border-radius:8px;border:1px solid var(--line);background:#e5e7eb}
-.legend{display:flex;flex-wrap:wrap;gap:.4rem 1rem;margin-top:.6rem;font-size:.85rem;color:var(--ink-2)}
-.legend i{display:inline-block;width:12px;height:12px;border-radius:50%;margin-right:.3rem;vertical-align:-1px;border:1px solid rgba(0,0,0,.3)}
-.layer-toggles{display:flex;flex-wrap:wrap;gap:.4rem .9rem;margin:.2rem 0 .6rem;font-size:.92rem}
-.layer-toggles label{display:inline-flex;align-items:center;gap:.35rem;cursor:pointer}
-.layer-toggles input{width:18px;height:18px;accent-color:var(--brand)}
-
-.cards{display:grid;grid-template-columns:repeat(2,1fr);gap:1rem}
-.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:1rem 1rem .8rem;display:flex;flex-direction:column;box-shadow:var(--shadow)}
-.card h3{margin:0 0 .5rem;font-size:1.1rem;display:flex;align-items:center;gap:.5rem;justify-content:space-between}
-.card{min-width:0}
-.card .body{flex:1;min-width:0;overflow-x:auto}
-.big{font-size:1.7rem;font-weight:800;letter-spacing:-.02em;line-height:1.1}
-.muted{color:var(--ink-2)}
-.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:.6rem;margin:.3rem 0 .8rem}
-.kpi{background:var(--surface-2);border-radius:8px;padding:.55rem .65rem}
-.kpi .l{font-size:.8rem;color:var(--ink-2)}
-.kpi .v{font-size:1.15rem;font-weight:700}
-.card table{width:100%;border-collapse:collapse;font-size:.88rem}
-.card th,.card td{text-align:left;padding:.35rem .3rem;border-bottom:1px solid var(--line);vertical-align:top}
-.card th{font-weight:600;color:var(--ink-2);font-size:.8rem}
-.card td.num,.card th.num{text-align:right;white-space:nowrap}
-.src{margin:.8rem 0 0;padding-top:.6rem;border-top:1px dashed var(--line);font-size:.8rem;color:var(--ink-2)}
-.src .st{margin-right:.3rem}
-.card-msg{padding:.7rem .8rem;border-radius:8px;font-size:.92rem;margin:.2rem 0 .6rem}
-.card-msg.error{background:var(--bad-bg);color:var(--bad)}
-.card-msg.empty{background:var(--surface-2);color:var(--ink)}
-.skeleton{height:90px;border-radius:8px;background:linear-gradient(90deg,#eee 25%,#f6f6f6 50%,#eee 75%);background-size:200% 100%;animation:sh 1.2s infinite}
+.skeleton{height:110px;border-radius:var(--radius-s);background:linear-gradient(90deg,#efede6 25%,#f7f6f1 50%,#efede6 75%);background-size:200% 100%;animation:sh 1.2s infinite}
 @keyframes sh{to{background-position:-200% 0}}
 @media (prefers-reduced-motion:reduce){.skeleton{animation:none}}
 .dpe-scale{display:flex;gap:3px;margin:.4rem 0 .6rem}
-.dpe-scale span{flex:1;text-align:center;font-weight:800;padding:.3rem 0;border-radius:4px;font-size:.9rem;opacity:.35}
-.dpe-scale span.on{opacity:1;outline:3px solid var(--ink);outline-offset:1px}
+.dpe-scale span{flex:1;text-align:center;font-weight:800;padding:.32rem 0;border-radius:5px;font-size:.9rem;opacity:.3}
+.dpe-scale span.on{opacity:1;outline:3px solid var(--ink);outline-offset:1px;transform:scaleY(1.12)}
 .dpe-A{background:#008a5e;color:#fff}.dpe-B{background:#33a357;color:#fff}.dpe-C{background:#9dc76c;color:#1b1d1f}.dpe-D{background:#f2e33a;color:#1b1d1f}
 .dpe-E{background:#f2b33b;color:#1b1d1f}.dpe-F{background:#ec7d2d;color:#1b1d1f}.dpe-G{background:#d1281f;color:#fff}
 .bar{display:flex;height:22px;border-radius:6px;overflow:hidden;margin:.3rem 0}
@@ -154,51 +205,87 @@ a:hover{text-decoration-thickness:2px}
 .pill.ok{background:var(--ok-bg);color:var(--ok)}.pill.bad{background:var(--bad-bg);color:var(--bad)}.pill.warn{background:var(--warn-bg);color:var(--warn)}.pill.neutral{background:#e5e7eb;color:#374151}
 ul.plain{margin:.2rem 0;padding-left:1.1rem}
 ul.plain li{margin:.15rem 0}
-details.more{margin-top:.4rem}
+details.more{margin-top:.5rem}
 details.more summary{cursor:pointer;color:var(--brand);font-weight:600;font-size:.9rem}
-.licences{margin-top:1.5rem;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:1rem;font-size:.88rem}
+
+/* Sources */
+.coverage ul{list-style:none;margin:0 0 1rem;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:.45rem}
+.coverage li{display:flex;gap:.5rem;align-items:flex-start;font-size:.86rem;padding:.5rem .6rem;border-radius:var(--radius-s);background:var(--surface);border:1px solid var(--line)}
+.licences{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:1rem;font-size:.88rem}
 .licences h3{margin:0 0 .5rem;font-size:1rem}
 .licences ul{margin:0;padding-left:1.1rem}
+.disclaimer{margin:.8rem 0 0;padding:.7rem .85rem;border-radius:var(--radius-s);background:var(--surface-2);font-size:.88rem}
 
 footer{border-top:1px solid var(--line);background:var(--surface);padding:1.5rem 0;font-size:.88rem;color:var(--ink-2)}
 footer p{margin:.3rem 0}
 .print-only{display:none}
 
+@media (max-width:900px){.keyfigs{grid-template-columns:repeat(2,1fr)}}
+@media (max-width:520px){.proto{display:none}.report-nav{margin-left:-16px;margin-right:-16px}}
 @media (max-width:760px){
   .synth,.cards{grid-template-columns:1fr}
-  #map{height:320px}
+  #map{height:330px}
   .search-row{flex-direction:column}
   .search-row .btn{justify-content:center}
+  .has-report .search-row{flex-direction:row}
+  .has-report .search .btn .lbl{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}
+  .report-head{align-items:flex-start}
+  .actions .btn span.lbl{display:none}
+  .kf .v{font-size:1.2rem}
 }
 @media print{
-  body{background:#fff;font-size:11pt}
-  .top,.hero,.value,.actions,footer,.skip,.layer-toggles,details.more summary,.no-print{display:none!important}
+  body{background:#fff;font-size:10.5pt}
+  .top,.hero,.value,.actions,footer,.skip,.layer-toggles,.report-nav,details.more summary,.no-print{display:none!important}
   details.more>*{display:block}
   .print-only{display:block}
-  .card,.synth section,.coverage,.map-wrap,.licences{box-shadow:none;break-inside:avoid;border-color:#999}
+  .card,.synth section,.map-wrap,.licences,.kf{box-shadow:none;break-inside:avoid;border-color:#999}
   .cards{grid-template-columns:1fr 1fr}
+  .keyfigs{grid-template-columns:repeat(4,1fr)}
   #map{height:300px}
-  a{color:#000}
+  a{color:#000;text-decoration:none}
   .report{padding-top:0}
   @page{margin:12mm}
 }
 </style>
 </head>
 <body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M10 21v-6h4v6"/></symbol>
+  <symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></symbol>
+  <symbol id="i-tag" viewBox="0 0 24 24"><path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L2 12V2h10l8.6 8.6a2 2 0 0 1 0 2.8z"/><circle cx="7" cy="7" r="1.5"/></symbol>
+  <symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M12 8v4M12 16h.01"/></symbol>
+  <symbol id="i-volume" viewBox="0 0 24 24"><path d="M11 5 6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M19 5a10 10 0 0 1 0 14"/></symbol>
+  <symbol id="i-bus" viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="14" rx="2"/><path d="M4 10h16M8 21v-4M16 21v-4"/><circle cx="8" cy="13.5" r=".8"/><circle cx="16" cy="13.5" r=".8"/></symbol>
+  <symbol id="i-cart" viewBox="0 0 24 24"><circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/><path d="M2 3h3l2.7 12.4a2 2 0 0 0 2 1.6h7.6a2 2 0 0 0 2-1.6L21 7H6"/></symbol>
+  <symbol id="i-school" viewBox="0 0 24 24"><path d="M22 10 12 5 2 10l10 5 10-5z"/><path d="M6 12v5c3 2 9 2 12 0v-5"/></symbol>
+  <symbol id="i-wifi" viewBox="0 0 24 24"><path d="M5 12.5a10 10 0 0 1 14 0M8.5 16a5 5 0 0 1 7 0M2 9a15 15 0 0 1 20 0"/><circle cx="12" cy="19.5" r=".8"/></symbol>
+  <symbol id="i-drop" viewBox="0 0 24 24"><path d="M12 2.7 6.3 8.4a8 8 0 1 0 11.4 0z"/></symbol>
+  <symbol id="i-map" viewBox="0 0 24 24"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2z"/><path d="M9 4v14M15 6v14"/></symbol>
+  <symbol id="i-list" viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></symbol>
+  <symbol id="i-leaf" viewBox="0 0 24 24"><path d="M11 20A7 7 0 0 1 4 13c0-6 7-10 16-10 0 9-4 16-9 17z"/><path d="M4 21c4-6 8-9 12-11"/></symbol>
+  <symbol id="i-share" viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4"/></symbol>
+  <symbol id="i-print" viewBox="0 0 24 24"><path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m8 12 3 3 5-6"/></symbol>
+</svg>
 <a class="skip" href="#main">Aller au contenu</a>
 <header class="top">
   <div class="wrap">
-    <a class="logo" href="./" aria-label="Ce logement, vraiment – accueil">Ce logement, <span>vraiment</span></a>
-    <span class="proto">Prototype · données ouvertes</span>
+    <a class="logo" href="./" aria-label="Ce logement, vraiment – accueil"><span class="logo-mark" aria-hidden="true"><svg class="ico"><use href="#i-home"/></svg></span>Ce logement, <span>vraiment</span></a>
+    <span class="proto">Prototype · données publiques</span>
   </div>
 </header>
 
 <main id="main">
-  <!-- Écran 1 : recherche + différenciation -->
+  <!-- Recherche (compactée quand un rapport est affiché) -->
   <section class="hero" aria-labelledby="h-hero">
     <div class="wrap">
-      <h1 id="h-hero">Avant de signer, découvrez ce que l'annonce ne dit pas.</h1>
-      <p class="lead">Une adresse, <strong>un seul rapport</strong> qui réunit 8 sources publiques aujourd'hui éparpillées sur une dizaine de sites : prix réels des ventes voisines, DPE, risques, bruit, connexion, écoles, eau du robinet.</p>
+      <p class="eyebrow">Avant d'acheter ou de louer</p>
+      <h1 id="h-hero">Découvrez ce que l'annonce ne dit pas.</h1>
+      <p class="lead">Une adresse, <strong>un seul rapport</strong> : prix réels des ventes voisines, DPE, risques, bruit, transports, commerces, écoles, fibre et eau du robinet. Dix sources publiques aujourd'hui éparpillées sur autant de sites, réunies et expliquées simplement.</p>
 
       <form class="search" id="search-form" role="search" autocomplete="off" novalidate>
         <label for="addr">Adresse du logement</label>
@@ -206,10 +293,10 @@ footer p{margin:.3rem 0}
           <input id="addr" name="addr" type="text" placeholder="Ex. : 8 boulevard du Port, Amiens"
                  role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="suggestions"
                  aria-describedby="addr-hint" spellcheck="false" inputmode="search">
-          <button class="btn" type="submit">Obtenir le rapport</button>
+          <button class="btn" type="submit"><svg class="ico" aria-hidden="true"><use href="#i-search"/></svg><span class="lbl">Obtenir le rapport</span></button>
         </div>
         <ul id="suggestions" class="listbox" role="listbox" aria-label="Adresses proposées" hidden></ul>
-        <p id="addr-hint" class="hint">Saisissez au moins 3 caractères, puis choisissez une adresse avec les flèches ↑ ↓ et Entrée. Gratuit, sans compte.</p>
+        <p id="addr-hint" class="hint">Saisissez au moins 3 caractères, puis choisissez une adresse avec ↑ ↓ et Entrée. Gratuit, sans compte, sans cookie.</p>
         <div class="examples">
           <span>Essayer :</span>
           <button type="button" class="chip" data-example="20 avenue de Ségur 75007 Paris">Paris 7e</button>
@@ -223,8 +310,8 @@ footer p{margin:.3rem 0}
 
   <section class="value" id="value" aria-labelledby="h-value">
     <div class="wrap">
-      <h2 id="h-value">8 sources officielles, 1 rapport, chaque chiffre sourcé et daté</h2>
-      <p class="sub">Là où il faut aujourd'hui ouvrir un onglet par administration, le rapport les interroge toutes en même temps, en direct.</p>
+      <h2 id="h-value">10 sources officielles, 1 rapport, chaque chiffre sourcé et daté</h2>
+      <p class="sub">Là où il faut aujourd'hui ouvrir un onglet par administration, le rapport les interroge toutes en même temps.</p>
       <ul class="sources-grid" id="sources-grid"></ul>
 
       <div class="compare">
@@ -235,7 +322,7 @@ footer p{margin:.3rem 0}
             <tr><th scope="row">Prix réels des ventes voisines</th><td class="yes">✔ Oui</td><td class="part">◐ Estimation</td><td class="no">✘ Non</td><td class="us yes">✔ Oui + tendance</td></tr>
             <tr><th scope="row">DPE du logement et du quartier</th><td class="no">✘ Non</td><td class="no">✘ Non</td><td class="no">✘ Non</td><td class="us yes">✔ Oui</td></tr>
             <tr><th scope="row">Risques naturels et industriels</th><td class="no">✘ Non</td><td class="no">✘ Non</td><td class="yes">✔ Oui</td><td class="us yes">✔ Oui + arrêtés CatNat</td></tr>
-            <tr><th scope="row">Bruit, écoles, eau, fibre</th><td class="no">✘ Non</td><td class="part">◐ En partie</td><td class="no">✘ Non</td><td class="us yes">✔ Oui</td></tr>
+            <tr><th scope="row">Bruit, transports, commerces, écoles, eau, fibre</th><td class="no">✘ Non</td><td class="part">◐ En partie</td><td class="no">✘ Non</td><td class="us yes">✔ Oui</td></tr>
             <tr><th scope="row">Points d'attention en clair</th><td class="no">✘ Non</td><td class="no">✘ Non</td><td class="part">◐ Jargon réglementaire</td><td class="us yes">✔ Oui</td></tr>
             <tr><th scope="row">Source et date sur chaque chiffre</th><td class="part">◐ En partie</td><td class="no">✘ Non</td><td class="yes">✔ Oui</td><td class="us yes">✔ Oui</td></tr>
           </tbody>
@@ -243,9 +330,9 @@ footer p{margin:.3rem 0}
       </div>
 
       <div class="how">
-        <div><h3>1. Une adresse</h3><p>Géocodée avec la Base Adresse Nationale, la même que celle des services publics.</p></div>
-        <div><h3>2. Huit sources interrogées en direct</h3><p>Rien n'est stocké. Chaque bloc indique sa source, sa licence et la date de ses données.</p></div>
-        <div><h3>3. Un rapport à partager</h3><p>Points forts, points d'attention, carte : à imprimer en PDF ou à envoyer par lien.</p></div>
+        <div><h3>1. Une adresse</h3><p>Géocodée avec la Base Adresse Nationale, la référence des services publics.</p></div>
+        <div><h3>2. Dix sources officielles</h3><p>Interrogées en direct ou mises à jour chaque mois. Rien n'est inventé : une source muette est signalée.</p></div>
+        <div><h3>3. Un rapport à partager</h3><p>Chiffres clés, points forts, points d'attention, carte : à imprimer en PDF ou à envoyer par lien.</p></div>
       </div>
     </div>
   </section>
@@ -255,43 +342,59 @@ footer p{margin:.3rem 0}
     <div class="wrap">
       <div class="report-head">
         <div>
-          <p class="muted" style="margin:0;font-size:.85rem">Rapport d'adresse</p>
+          <p class="kicker">Rapport d'adresse</p>
           <h2 id="h-report" tabindex="-1"></h2>
-          <p class="meta" id="report-meta"></p>
+          <p class="meta"><span id="report-meta"></span><a class="cov-chip" id="cov-chip" href="#sources">Interrogation des sources…</a></p>
         </div>
         <div class="actions">
-          <button class="btn small" type="button" id="share-btn">Partager le lien</button>
-          <button class="btn small ghost" type="button" id="print-btn">Imprimer / PDF</button>
-          <button class="btn small ghost" type="button" id="new-btn">Nouvelle adresse</button>
+          <button class="btn small" type="button" id="share-btn"><svg class="ico" aria-hidden="true"><use href="#i-share"/></svg><span class="lbl">Partager</span><span class="sr-only"> le lien du rapport</span></button>
+          <button class="btn small ghost" type="button" id="print-btn"><svg class="ico" aria-hidden="true"><use href="#i-print"/></svg><span class="lbl">Imprimer / PDF</span><span class="sr-only"> le rapport</span></button>
+          <button class="btn small ghost" type="button" id="new-btn"><svg class="ico" aria-hidden="true"><use href="#i-search"/></svg><span class="lbl">Nouvelle adresse</span></button>
         </div>
       </div>
       <div id="share-msg" role="status" aria-live="polite" class="no-print"></div>
       <div id="missing-banner" role="status" aria-live="polite"></div>
 
-      <section class="coverage" aria-labelledby="h-cov">
-        <h3 id="h-cov">Sources interrogées pour cette adresse</h3>
-        <ul id="coverage"></ul>
+      <nav class="report-nav" aria-label="Sections du rapport">
+        <ul>
+          <li><a href="#bref">En bref</a></li>
+          <li><a href="#carte">Carte</a></li>
+          <li><a href="#g-bien">Bien et marché</a></li>
+          <li><a href="#g-env">Environnement et risques</a></li>
+          <li><a href="#g-vie">Vie quotidienne</a></li>
+          <li><a href="#sources">Sources</a></li>
+        </ul>
+      </nav>
+
+      <section class="block" id="bref" aria-labelledby="h-bref">
+        <h2 class="block-title" id="h-bref"><span class="ico-box" aria-hidden="true"><svg class="ico"><use href="#i-list"/></svg></span>En bref</h2>
+        <ul class="keyfigs" id="keyfigs"></ul>
+        <div class="synth" aria-live="polite">
+          <section class="att" aria-labelledby="h-att"><h3 id="h-att"><svg class="ico" aria-hidden="true"><use href="#i-alert"/></svg>Points d'attention<span class="count" id="att-count"></span></h3><ul id="att-list"><li class="pending">Analyse en cours…</li></ul></section>
+          <section class="fort" aria-labelledby="h-fort"><h3 id="h-fort"><svg class="ico" aria-hidden="true"><use href="#i-check"/></svg>Points forts<span class="count" id="fort-count"></span></h3><ul id="fort-list"><li class="pending">Analyse en cours…</li></ul></section>
+        </div>
       </section>
 
-      <div class="synth" aria-live="polite">
-        <section class="att" aria-labelledby="h-att"><h3 id="h-att"><span aria-hidden="true">⚠️</span> Points d'attention</h3><ul id="att-list"><li class="muted" style="background:none;border:0">Analyse en cours…</li></ul></section>
-        <section class="fort" aria-labelledby="h-fort"><h3 id="h-fort"><span aria-hidden="true">✅</span> Points forts</h3><ul id="fort-list"><li class="muted" style="background:none;border:0">Analyse en cours…</li></ul></section>
-      </div>
-
-      <section class="map-wrap" aria-labelledby="h-map">
-        <h3 id="h-map" class="section-title">Carte des alentours</h3>
-        <div class="layer-toggles" id="layer-toggles" role="group" aria-label="Couches affichées sur la carte"></div>
-        <div id="map" role="region" aria-label="Carte interactive des alentours. Les mêmes informations sont détaillées dans les fiches ci-dessous."></div>
-        <div class="legend" id="legend"></div>
+      <section class="block" id="carte" aria-labelledby="h-map">
+        <h2 class="block-title" id="h-map"><span class="ico-box" aria-hidden="true"><svg class="ico"><use href="#i-map"/></svg></span>Carte des alentours</h2>
+        <div class="map-wrap">
+          <div class="layer-toggles" id="layer-toggles" role="group" aria-label="Couches affichées sur la carte"></div>
+          <div id="map" role="region" aria-label="Carte interactive des alentours. Les mêmes informations sont détaillées dans les fiches."></div>
+          <div class="legend" id="legend"></div>
+        </div>
       </section>
 
-      <div class="cards" id="cards"></div>
+      <div id="groups"></div>
 
-      <section class="licences" aria-labelledby="h-lic">
-        <h3 id="h-lic">Sources, licences et limites</h3>
-        <ul id="licences"></ul>
-        <p class="muted" style="margin:.6rem 0 0">Ce rapport est une aide à la décision, pas un diagnostic officiel. Il ne remplace ni l'état des risques (ERP) ni le DPE annexés au compromis ou au bail, qui seuls font foi.</p>
-        <p class="print-only" id="print-url"></p>
+      <section class="block" id="sources" aria-labelledby="h-sources">
+        <h2 class="block-title" id="h-sources"><span class="ico-box" aria-hidden="true"><svg class="ico"><use href="#i-info"/></svg></span>Sources et méthode</h2>
+        <div class="coverage"><ul id="coverage" aria-label="État de chaque source pour cette adresse"></ul></div>
+        <div class="licences">
+          <h3>Licences</h3>
+          <ul id="licences"></ul>
+          <p class="disclaimer">Ce rapport est une aide à la décision, pas un diagnostic officiel. Il ne remplace ni l'état des risques (ERP) ni le DPE annexés au compromis ou au bail, qui seuls font foi. Les distances sont à vol d'oiseau.</p>
+          <p class="print-only" id="print-url"></p>
+        </div>
       </section>
     </div>
   </section>
@@ -299,8 +402,9 @@ footer p{margin:.3rem 0}
 
 <footer>
   <div class="wrap">
+    <p><strong>Prototype</strong> réalisé à partir de données publiques ouvertes.</p>
     <p><strong>Vie privée :</strong> aucun compte, aucun cookie, aucun traceur. L'adresse saisie est envoyée directement depuis votre navigateur aux services publics interrogés, et n'est enregistrée nulle part par ce site.</p>
-    <p><strong>Données :</strong> uniquement des données publiques réelles, réutilisées sous Licence Ouverte Etalab 2.0. Aucune valeur n'est inventée ni estimée par défaut : si une source ne répond pas, le rapport l'indique.</p>
+    <p><strong>Données :</strong> uniquement des données publiques réelles, réutilisées sous Licence Ouverte Etalab 2.0 (et ODbL pour certains réseaux de transport). Aucune valeur n'est inventée ni estimée par défaut : si une source ne répond pas, le rapport l'indique.</p>
   </div>
 </footer>
 
@@ -317,6 +421,9 @@ const CONFIG = {
   radiusDpe: 250,        // m – DPE du voisinage
   radiusSameBuilding: 25,// m – DPE considérés comme « cette adresse »
   radiusSchools: 1000,   // m
+  radiusStops: 500,      // m – arrêts de transport en commun
+  radiusStations: 1500,  // m – gares, métro, tram
+  radiusShops: 1000,     // m – commerces alimentaires
   radiusNoise: 400,      // m – axes routiers / ferrés
   radiusAirport: 8000,   // m – aéroports dotés d'un plan d'exposition au bruit (PEB)
   endpoints: {
@@ -325,6 +432,8 @@ const CONFIG = {
     dpe: "https://data.ademe.fr/data-fair/api/v1/datasets/dpe03existant/lines",
     georisques: "https://www.georisques.gouv.fr/api/v1/", // API v1 détaillée (le « rapport risque » synthétique est en panne en HTTP/2)
     wfs: "https://data.geopf.fr/wfs/ows", // Géoplateforme IGN : BD TOPO + PEB DGAC
+    gtfsStops: "https://transport.data.gouv.fr/api/gtfs-stops", // arrêts de tous les GTFS publiés (CORS ouvert)
+    shops: (dep) => `data/commerces/${dep}.json`, // BPE INSEE précalculée chaque mois (scripts/build_commerces.py)
     education: "https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-annuaire-education/records",
     hubeau: "https://hubeau.eaufrance.fr/api/v1/qualite_eau_potable/resultats_dis",
     arcep: (dep) => `data/arcep/${dep}.json` // précalculé chaque mois par GitHub Actions (scripts/build_arcep.py)
@@ -339,10 +448,18 @@ const SOURCES = {
   noise: {name:"BD TOPO® et plans d'exposition au bruit (estimation du bruit)", short:"Bruit", producer:"IGN / DGAC (Géoplateforme)", license:"Licence Ouverte 2.0", licenseUrl:"https://www.etalab.gouv.fr/licence-ouverte-open-licence/", url:"https://geoservices.ign.fr/bdtopo", what:"Grands axes, voies ferrées, aéroports avec PEB"},
   arcep: {name:"Arcep – Ma connexion internet (statistiques communales)", short:"Connexion", producer:"Arcep", license:"Licence Ouverte 2.0", licenseUrl:"https://www.etalab.gouv.fr/licence-ouverte-open-licence/", url:"https://www.data.gouv.fr/datasets/ma-connexion-internet", what:"Fibre, câble, cuivre, 4G fixe, débits"},
   schools:{name:"Annuaire de l'éducation", short:"Écoles", producer:"Ministère de l'Éducation nationale", license:"Licence Ouverte 2.0", licenseUrl:"https://www.etalab.gouv.fr/licence-ouverte-open-licence/", url:"https://data.education.gouv.fr/explore/dataset/fr-en-annuaire-education/", what:"Écoles, collèges, lycées"},
+  transport: {name:"Arrêts GTFS (transport.data.gouv.fr) et gares, stations de la BD TOPO®", short:"Transports", producer:"Point d'accès national (DGITM) / IGN", license:"Licence Ouverte 2.0 / ODbL selon le réseau", licenseUrl:"https://transport.data.gouv.fr/legal", url:"https://transport.data.gouv.fr/explore", what:"Arrêts de bus, tram, métro, gares"},
+  shops: {name:"Base permanente des équipements (BPE)", short:"Commerces", producer:"INSEE", license:"Licence Ouverte 2.0", licenseUrl:"https://www.etalab.gouv.fr/licence-ouverte-open-licence/", url:"https://www.insee.fr/fr/statistiques/8217525", what:"Supermarchés, supérettes, boulangeries"},
   water: {name:"Hub'Eau – qualité de l'eau potable", short:"Eau", producer:"Ministère de la Santé (ARS) / OFB", license:"Licence Ouverte 2.0", licenseUrl:"https://www.etalab.gouv.fr/licence-ouverte-open-licence/", url:"https://hubeau.eaufrance.fr/page/api-qualite-eau-potable", what:"Conformité de l'eau du robinet"}
 };
-const THEMES = ["dvf","dpe","georisques","noise","arcep","schools","water"];
-const THEME_TITLES = {dvf:"Prix des ventes voisines", dpe:"Performance énergétique", georisques:"Risques", noise:"Bruit", arcep:"Connexion internet et mobile", schools:"Écoles à proximité", water:"Qualité de l'eau du robinet"};
+const ICONS = {ban: "pin", dvf: "tag", dpe: "bolt", georisques: "shield", noise: "volume", transport: "bus", shops: "cart", schools: "school", arcep: "wifi", water: "drop"};
+const icon = (id, cls = "ico") => `<svg class="${cls}" aria-hidden="true"><use href="#i-${ICONS[id] || id}"/></svg>`;
+const GROUPS = [
+  {id: "g-bien", title: "Le bien et son marché", icon: "home", themes: ["dvf", "dpe"]},
+  {id: "g-env", title: "Environnement et risques", icon: "leaf", themes: ["georisques", "noise", "water"]},
+  {id: "g-vie", title: "Vie quotidienne", icon: "pin", themes: ["transport", "shops", "schools", "arcep"]}];
+const THEMES = ["dvf","dpe","georisques","noise","transport","shops","schools","arcep","water"];
+const THEME_TITLES = {dvf:"Prix des ventes voisines", dpe:"Performance énergétique", georisques:"Risques", noise:"Bruit", arcep:"Connexion internet et mobile", schools:"Écoles à proximité", transport:"Transports en commun", shops:"Commerces alimentaires", water:"Qualité de l'eau du robinet"};
 
 /* ========================== Utilitaires ========================== */
 const $ = (s, r = document) => r.querySelector(s);
@@ -351,6 +468,7 @@ const fmtInt = (n) => n == null || isNaN(n) ? "—" : Math.round(n).toLocaleStri
 const fmtEur = (n) => n == null || isNaN(n) ? "—" : Math.round(n).toLocaleString("fr-FR") + " €";
 const fmtDist = (m) => m == null ? "—" : m < 1000 ? `${Math.round(m / 10) * 10} m` : `${(m / 1000).toFixed(1).replace(".", ",")} km`;
 const fmtDate = (d) => { if (!d) return "—"; const x = d instanceof Date ? d : new Date(d); return isNaN(x) ? String(d) : x.toLocaleDateString("fr-FR"); };
+const fmtPct = (p) => `${String(Math.round(p * 10) / 10).replace(".", ",")} %`;
 const today = () => new Date().toLocaleDateString("fr-FR");
 const median = (a) => { if (!a.length) return null; const s = [...a].sort((x, y) => x - y); const m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
 function haversine(lat1, lon1, lat2, lon2) {
@@ -374,6 +492,11 @@ function distToLine(lat, lon, pts) {
   if (pts.length === 1) best = haversine(lat, lon, pts[0].lat, pts[0].lon);
   return best;
 }
+const stationLabel = (x) => !x.name ? x.mode : normName(x.name).startsWith(normName(x.mode)) ? x.name : `${x.mode} ${x.name}`;
+function centroidOf(g) { let n = 0, la = 0, lo = 0; const walk = (a) => { if (typeof a[0] === "number") { lo += a[0]; la += a[1]; n++; } else a.forEach(walk); }; if (g && g.coordinates) walk(g.coordinates); return n ? {lat: la / n, lon: lo / n} : null; }
+function bboxAround(lat, lon, R) { const dLat = R / 110540, dLon = R / (111320 * Math.cos(lat * Math.PI / 180)); return {south: lat - dLat, north: lat + dLat, west: lon - dLon, east: lon + dLon}; }
+const wfsGet = (type, props, filter, count) => getJSON(`${CONFIG.endpoints.wfs}?SERVICE=WFS&VERSION=2.0.0&REQUEST=GetFeature&outputFormat=application/json&srsName=EPSG:4326&TYPENAMES=${type}&count=${count}&propertyName=${props}&CQL_FILTER=${encodeURIComponent(filter)}`, {timeoutMs: 20000});
+const normName = (n) => String(n || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
 class SourceError extends Error { constructor(msg, kind) { super(msg); this.kind = kind || "error"; } }
 async function fetchWithTimeout(url, opts = {}) {
   const ctrl = new AbortController();
@@ -595,6 +718,48 @@ const CONNECTORS = {
     return {list, updated: list.map(s => s.updated).filter(Boolean).sort().pop()};
   },
 
+  async transport(ctx) {
+    const b = bboxAround(ctx.lat, ctx.lon, CONFIG.radiusStops);
+    const [g, st] = await Promise.allSettled([
+      getJSON(`${CONFIG.endpoints.gtfsStops}?south=${b.south.toFixed(5)}&north=${b.north.toFixed(5)}&west=${b.west.toFixed(5)}&east=${b.east.toFixed(5)}`, {timeoutMs: 20000}),
+      wfsGet("BDTOPO_V3:equipement_de_transport", "geometrie,nature,toponyme", `nature IN ('Station de métro','Station de tramway','Gare voyageurs uniquement','Gare voyageurs et fret','Arrêt voyageurs','Gare routière','Gare téléphérique') AND DWITHIN(geometrie,POINT(${ctx.lat} ${ctx.lon}),${CONFIG.radiusStations},meters)`, 200)]);
+    if (g.status === "rejected" && st.status === "rejected") throw g.reason;
+    const partial = [];
+    let stops = null, stations = null;
+    if (g.status === "fulfilled") {
+      const byName = new Map();
+      for (const f of g.value.features || []) {
+        const c = f.geometry && f.geometry.coordinates; if (!c) continue;
+        const p = f.properties || {}, dist = haversine(ctx.lat, ctx.lon, c[1], c[0]);
+        if (dist > CONFIG.radiusStops) continue;
+        const k = normName(p.stop_name) || `${c[0]},${c[1]}`, cur = byName.get(k);
+        if (!cur) byName.set(k, {name: p.stop_name || "Arrêt sans nom", lat: c[1], lon: c[0], dist, networks: new Set([p.dataset_title].filter(Boolean))});
+        else { if (p.dataset_title) cur.networks.add(p.dataset_title); if (dist < cur.dist) Object.assign(cur, {lat: c[1], lon: c[0], dist}); }
+      }
+      stops = [...byName.values()].map(x => ({...x, networks: [...x.networks]})).sort((a, b) => a.dist - b.dist);
+    } else partial.push("arrêts de bus, tram et car (transport.data.gouv.fr)");
+    if (st.status === "fulfilled") {
+      const MODE = {"Station de métro": "Métro", "Station de tramway": "Tramway", "Gare voyageurs uniquement": "Gare", "Gare voyageurs et fret": "Gare", "Arrêt voyageurs": "Halte ferroviaire", "Gare routière": "Gare routière", "Gare téléphérique": "Téléphérique"};
+      const seen = new Map();
+      for (const f of st.value.features || []) {
+        const c = centroidOf(f.geometry); if (!c) continue;
+        const p = f.properties, x = {mode: MODE[p.nature] || p.nature, name: p.toponyme || "", lat: c.lat, lon: c.lon, dist: haversine(ctx.lat, ctx.lon, c.lat, c.lon)};
+        const k = x.mode + "|" + normName(x.name); if (!seen.has(k) || seen.get(k).dist > x.dist) seen.set(k, x);
+      }
+      stations = [...seen.values()].sort((a, b) => a.dist - b.dist);
+    } else partial.push("gares et stations de métro ou tram (BD TOPO)");
+    return {stops, stations, partial};
+  },
+
+  async shops(ctx) {
+    if (!ctx.citycode) throw new SourceError("code commune inconnu");
+    const j = await getJSON(CONFIG.endpoints.shops(depFromCity(ctx.citycode)));
+    const cats = j.categories || {};
+    const items = (j.items || []).map(([lat, lon, code, name, address]) => ({lat, lon, code, label: cats[code] || code, name, address, dist: haversine(ctx.lat, ctx.lon, lat, lon)}))
+      .filter(x => x.dist <= CONFIG.radiusShops).sort((a, b) => a.dist - b.dist);
+    return {items, millesime: j.millesime, categories: cats};
+  },
+
   async water(ctx) {
     if (!ctx.citycode) throw new SourceError("code commune inconnu");
     const since = new Date(Date.now() - 365 * 864e5).toISOString().slice(0, 10);
@@ -619,11 +784,11 @@ async function runSource(id, ctx, runId) {
   result.fetchedAt = new Date();
   if (runId !== state.runId) return;
   state.results[id] = result;
-  renderCard(id); renderCoverage(); updateMap(id);
+  renderCard(id); renderCoverage(); renderKeyFigs(); updateMap(id);
 }
 async function retrySource(id) {
   const runId = state.runId;
-  state.results[id] = undefined; renderCoverage();
+  state.results[id] = undefined; renderCoverage(); renderKeyFigs();
   const card = $("#card-" + id); card.setAttribute("aria-busy", "true");
   card.querySelector(".body").innerHTML = `<div class="skeleton" aria-hidden="true"></div><p class="sr-only">Nouvelle tentative…</p>`;
   card.querySelector(".src")?.remove();
@@ -637,12 +802,16 @@ async function startReport(ctx) {
   const runId = state.runId;
   $("#value").hidden = true;
   $("#report").hidden = false;
+  document.body.classList.add("has-report");
   $("#h-report").textContent = ctx.label;
   $("#report-meta").textContent = [[ctx.postcode, ctx.city].filter(Boolean).join(" "), `code commune ${ctx.citycode || "—"}`, `rapport généré le ${today()}`].filter(Boolean).join(" · ");
   $("#missing-banner").innerHTML = "";
-  $("#att-list").innerHTML = $("#fort-list").innerHTML = `<li class="muted" style="background:none;border:0">Analyse en cours…</li>`;
-  $("#cards").innerHTML = THEMES.map(id => `<article class="card" id="card-${id}" aria-labelledby="t-${id}" aria-busy="true"><h3 id="t-${id}">${esc(THEME_TITLES[id])}</h3><div class="body"><div class="skeleton" aria-hidden="true"></div><p class="sr-only">Chargement…</p></div></article>`).join("");
-  renderCoverage(); renderLicences(); initMap();
+  $("#att-list").innerHTML = $("#fort-list").innerHTML = `<li class="pending">Analyse en cours…</li>`;
+  $("#att-count").textContent = $("#fort-count").textContent = "";
+  $("#groups").innerHTML = GROUPS.map(g => `<section class="block" id="${g.id}" aria-labelledby="h-${g.id}">
+    <h2 class="block-title" id="h-${g.id}"><span class="ico-box" aria-hidden="true"><svg class="ico"><use href="#i-${g.icon}"/></svg></span>${esc(g.title)}</h2>
+    <div class="cards">${g.themes.map(id => `<article class="card" id="card-${id}" aria-labelledby="t-${id}" aria-busy="true"><h3 id="t-${id}"><span class="ico-box">${icon(id)}</span>${esc(THEME_TITLES[id])}</h3><div class="body"><div class="skeleton" aria-hidden="true"></div><p class="sr-only">Chargement…</p></div></article>`).join("")}</div></section>`).join("");
+  renderCoverage(); renderKeyFigs(); watchNav(); renderLicences(); initMap();
   history.replaceState(null, "", "#" + new URLSearchParams({a: ctx.label, lat: ctx.lat.toFixed(6), lon: ctx.lon.toFixed(6), c: ctx.citycode || "", id: ctx.id || "", pc: ctx.postcode || "", v: ctx.city || ""}).toString());
   $("#print-url").textContent = "Lien du rapport : " + location.href;
   $("#h-report").focus();
@@ -656,6 +825,10 @@ const ST_LABEL = {live: "✓ Données réelles", error: "✗ Indisponible", empt
 function renderCoverage() {
   const items = [["ban", {status: "live"}], ...THEMES.map(id => [id, state.results[id] || {status: "loading"}])];
   $("#coverage").innerHTML = items.map(([id, r]) => `<li><span class="st ${r.status}">${ST_LABEL[r.status]}</span><span><strong>${esc(SOURCES[id].short)}</strong><br><span class="muted">${esc(SOURCES[id].producer)}</span></span></li>`).join("");
+  const done = THEMES.filter(id => state.results[id]), ok = done.filter(id => state.results[id].status !== "error").length;
+  const chip = $("#cov-chip");
+  if (done.length < THEMES.length) { chip.className = "cov-chip"; chip.textContent = `Interrogation des sources… ${done.length}/${THEMES.length}`; }
+  else { chip.className = "cov-chip " + (ok === THEMES.length ? "ok" : "partial"); chip.textContent = `${ok === THEMES.length ? "✓" : "⚠"} ${ok + 1}/${THEMES.length + 1} sources ont répondu`; }
   const down = THEMES.filter(id => state.results[id] && state.results[id].status === "error");
   $("#missing-banner").innerHTML = down.length ? `<div class="banner missing"><strong>Rapport incomplet :</strong> ${down.length === 1 ? "une source n'a" : `${down.length} sources n'ont`} pas répondu (${down.map(id => esc(SOURCES[id].short)).join(", ")}). Les fiches concernées l'indiquent, et la synthèse ne porte que sur les sources disponibles. Vous pouvez réessayer depuis chaque fiche.</div>` : "";
 }
@@ -667,6 +840,38 @@ function srcLine(id, r, extra) {
 function renderLicences() {
   $("#licences").innerHTML = ["ban", ...THEMES].map(id => { const s = SOURCES[id]; return `<li><strong>${esc(s.name)}</strong> (${esc(s.producer)}) — <a href="${s.licenseUrl}" target="_blank" rel="noopener">${esc(s.license)}</a> · <a href="${s.url}" target="_blank" rel="noopener">source</a></li>`; }).join("")
     + `<li>Fonds de carte : Plan IGN (Géoplateforme, Licence Ouverte 2.0) et © contributeurs OpenStreetMap (ODbL).</li>`;
+}
+
+/* ============================ Chiffres clés ============================ */
+const bestDpe = (d) => [...d.same].sort((a, b) => String(b.date).localeCompare(String(a.date)))[0];
+const KEYFIGS = [
+  ["dvf", "Prix médian au m²", (d) => [fmtEur(median(d.sales.map(x => x.ppm))), `${d.sales.length} ventes à moins de ${CONFIG.radiusSales} m`, ""]],
+  ["dpe", "DPE de l'adresse", (d) => { const b = bestDpe(d); return b ? [`Classe ${b.label}`, b.conso ? `${fmtInt(b.conso)} kWh/m²/an` : "", "AB".includes(b.label) ? "good" : "FG".includes(b.label) ? "bad" : b.label === "E" ? "mid" : ""] : ["Non publié", "aucun DPE depuis 2021", "mid"]; }],
+  ["georisques", "Risques à examiner", (d) => { const n = d.items.filter(x => x.alert).length, f = (d.failed || []).length; return [String(n), f ? `${f} thème(s) non vérifié(s)` : n ? d.items.filter(x => x.alert).map(x => x.label).slice(0, 2).join(", ") : "aucun risque notable", n ? "bad" : f ? "mid" : "good"]; }],
+  ["noise", "Bruit estimé", (d) => { const l = noiseLevel(d); return [l.label, "selon la distance aux axes", {ok: "good", warn: "mid", bad: "bad"}[l.cls]]; }],
+  ["transport", "Arrêt le plus proche", (d) => !d.stops ? ["Non vérifié", "source sans réponse", "na"] : d.stops[0] ? [fmtDist(d.stops[0].dist), d.stops[0].name, d.stops[0].dist <= 300 ? "good" : ""] : ["Aucun", `à moins de ${fmtDist(CONFIG.radiusStops)}`, "bad"]],
+  ["shops", "Supermarché le plus proche", (d) => { const x = d.items.find(i => ["B104", "B105"].includes(i.code)); return x ? [fmtDist(x.dist), x.name || x.label, x.dist <= 500 ? "good" : ""] : ["Aucun", `à moins de ${fmtDist(CONFIG.radiusShops)}`, "bad"]; }],
+  ["schools", "École la plus proche", (d) => { const x = d.list.find(s => /ecole|école/i.test(s.type || "")); return x ? [fmtDist(x.dist), x.name, x.dist <= 500 ? "good" : ""] : ["Aucune", `à moins de ${fmtDist(CONFIG.radiusSchools)}`, "mid"]; }],
+  ["arcep", "Fibre dans la commune", (d) => { const p = d.locaux ? d.ftth / d.locaux * 100 : null; return p == null ? ["—", "", "na"] : [`${String(Math.round(p * 10) / 10).replace(".", ",")} %`, "des locaux raccordables", p >= 90 ? "good" : p < 60 ? "bad" : "mid"]; }]];
+function renderKeyFigs() {
+  $("#keyfigs").innerHTML = KEYFIGS.map(([id, label, f]) => {
+    const r = state.results[id];
+    let v = "…", sub = "chargement", tone = "loading";
+    if (r && r.status === "live") { try { [v, sub, tone] = f(r.data); } catch (e) { v = "—"; sub = ""; tone = "na"; } }
+    else if (r && r.status === "error") { v = "Indisponible"; sub = "la source n'a pas répondu"; tone = "na"; }
+    else if (r && r.status === "empty") { v = "Pas de donnée"; sub = r.reason; tone = "na"; }
+    return `<li><a class="kf ${tone || ""}" href="#card-${id}"><span class="l">${icon(id)}${esc(label)}</span><span class="v">${esc(v)}</span><span class="s">${esc(sub || "")}</span></a></li>`;
+  }).join("");
+}
+let navObserver;
+function watchNav() {
+  if (!("IntersectionObserver" in window)) return;
+  if (navObserver) navObserver.disconnect();
+  const links = [...document.querySelectorAll(".report-nav a")];
+  navObserver = new IntersectionObserver((entries) => {
+    entries.forEach(e => { if (e.isIntersecting) links.forEach(a => a.setAttribute("aria-current", a.getAttribute("href") === "#" + e.target.id ? "true" : "false")); });
+  }, {rootMargin: "-30% 0px -65% 0px"});
+  links.forEach(a => { const t = document.querySelector(a.getAttribute("href")); if (t) navObserver.observe(t); });
 }
 
 /* ============================ Rendu : fiches ============================ */
@@ -780,6 +985,37 @@ const RENDER = {
       <p class="muted" style="font-size:.82rem;margin:.4rem 0 0">${d.list.length} établissement(s) à moins de ${fmtDist(CONFIG.radiusSchools)}, à vol d'oiseau. L'affectation dépend de la carte scolaire de la mairie.</p>`;
     return {html, extra: d.updated ? `Annuaire mis à jour le ${fmtDate(d.updated)}` : "Annuaire mis à jour quotidiennement"};
   },
+  transport(d) {
+    const s0 = d.stops && d.stops[0], st0 = d.stations && d.stations.find(x => x.mode !== "Gare routière");
+    const kpi = (l, v, sub) => `<div class="kpi"><div class="l">${l}</div><div class="v">${v}</div><div class="l">${sub}</div></div>`;
+    const near300 = d.stops ? d.stops.filter(x => x.dist <= 300).length : null;
+    const html = `
+      ${d.partial.length ? `<div class="card-msg error"><strong>Non vérifié</strong> (source sans réponse) : ${d.partial.map(esc).join(" ; ")}.</div>` : ""}
+      <div class="kpis">
+        ${d.stops ? kpi("Arrêt le plus proche", s0 ? fmtDist(s0.dist) : "—", s0 ? esc(s0.name) : `aucun à moins de ${fmtDist(CONFIG.radiusStops)}`) : ""}
+        ${d.stops ? kpi("Arrêts à moins de 300 m", near300, `${d.stops.length} à moins de ${fmtDist(CONFIG.radiusStops)}`) : ""}
+        ${d.stations ? kpi("Gare, métro ou tram", st0 ? fmtDist(st0.dist) : "—", st0 ? esc(stationLabel(st0)) : `aucun à moins de ${fmtDist(CONFIG.radiusStations)}`) : ""}
+      </div>
+      ${d.stops && d.stops.length ? `<table><caption class="sr-only">Arrêts les plus proches</caption><thead><tr><th scope="col">Arrêt</th><th scope="col">Réseau</th><th scope="col" class="num">Distance</th></tr></thead>
+        <tbody>${d.stops.slice(0, 6).map(x => `<tr><td>${esc(x.name)}</td><td>${esc(x.networks.slice(0, 2).join(", "))}${x.networks.length > 2 ? "…" : ""}</td><td class="num">${fmtDist(x.dist)}</td></tr>`).join("")}</tbody></table>` : ""}
+      ${d.stations && d.stations.length ? `<p style="margin:.6rem 0 .2rem"><strong>Gares et stations à moins de ${fmtDist(CONFIG.radiusStations)} :</strong></p><ul class="plain">${d.stations.slice(0, 5).map(x => `<li>${esc(stationLabel(x))} à ${fmtDist(x.dist)}</li>`).join("")}</ul>` : ""}
+      <p class="muted" style="font-size:.82rem;margin:.4rem 0 0">Distances à vol d'oiseau. Arrêts issus des horaires publiés par les réseaux sur transport.data.gouv.fr : un réseau qui ne publie pas ses données n'apparaît pas, et certains arrêts ne sont desservis qu'en période scolaire. Fréquences non prises en compte.</p>`;
+    return {html, extra: "Arrêts publiés par les réseaux, BD TOPO en mise à jour continue"};
+  },
+  shops(d) {
+    const first = (codes) => d.items.find(x => codes.includes(x.code));
+    const sup = first(["B104", "B105"]), prox = first(["B201", "B202"]), boul = first(["B207"]);
+    const kpi = (l, x, none) => `<div class="kpi"><div class="l">${l}</div><div class="v">${x ? fmtDist(x.dist) : "—"}</div><div class="l">${x ? esc(x.name || x.label) : none}</div></div>`;
+    const count = {}; d.items.forEach(x => count[x.label] = (count[x.label] || 0) + 1);
+    const html = `
+      <div class="kpis">${kpi("Supermarché ou hypermarché", sup, `aucun à moins de ${fmtDist(CONFIG.radiusShops)}`)}${kpi("Supérette ou épicerie", prox, `aucune à moins de ${fmtDist(CONFIG.radiusShops)}`)}${kpi("Boulangerie", boul, `aucune à moins de ${fmtDist(CONFIG.radiusShops)}`)}</div>
+      ${d.items.length ? `<table><caption class="sr-only">Commerces alimentaires les plus proches</caption><thead><tr><th scope="col">Commerce</th><th scope="col">Type</th><th scope="col" class="num">Distance</th></tr></thead>
+        <tbody>${d.items.slice(0, 8).map(x => `<tr><td>${esc(x.name || "Nom non diffusé")}${x.address ? `<br><span class="muted" style="font-size:.8rem">${esc(x.address)}</span>` : ""}</td><td>${esc(x.label)}</td><td class="num">${fmtDist(x.dist)}</td></tr>`).join("")}</tbody></table>
+        <p style="font-size:.88rem;margin:.4rem 0 0">À moins de ${fmtDist(CONFIG.radiusShops)} : ${Object.entries(count).map(([l, n]) => `${n} ${esc(l.toLowerCase())}${n > 1 ? "s" : ""}`).join(", ")}.</p>`
+        : `<div class="card-msg empty">Aucun commerce alimentaire recensé par l'INSEE à moins de ${fmtDist(CONFIG.radiusShops)}.</div>`}
+      <p class="muted" style="font-size:.82rem;margin:.4rem 0 0">Distances à vol d'oiseau. Le nom affiché est l'enseigne ou la raison sociale déclarée à l'INSEE. Les commerces ouverts ou fermés depuis le millésime ne sont pas à jour, et ceux du département voisin ne sont pas inclus.</p>`;
+    return {html, extra: `BPE millésime ${esc(d.millesime || "?")}`};
+  },
   water(d) {
     const nc = d.nonConformBact + d.nonConformPc;
     const html = `
@@ -834,11 +1070,28 @@ function renderSynthesis() {
     else if (l.score === 1) add(att, "noise", "Exposition probable au bruit modérée", "Vérifiez l'orientation des pièces et le vitrage");
     else add(fort, "noise", "Environnement probablement calme", `Aucun grand axe à moins de ${CONFIG.radiusNoise} m`);
   }
+  // Transports
+  if (R.transport?.data) {
+    const d = R.transport.data, s0 = d.stops && d.stops[0], st0 = d.stations && d.stations.find(x => !/routière/.test(x.mode));
+    if (d.partial.length) add(att, "transport", "Transports en commun partiellement vérifiés", `Sans réponse : ${d.partial.join(" ; ")}`);
+    if (st0 && st0.dist <= 800) add(fort, "transport", `${stationLabel(st0)} à ${fmtDist(st0.dist)}`, "Transport lourd accessible à pied");
+    if (d.stops) {
+      if (s0 && s0.dist <= 300) add(fort, "transport", `Arrêt de transport en commun à ${fmtDist(s0.dist)}`, `${s0.name}${s0.networks[0] ? " · " + s0.networks[0] : ""}`);
+      else if (!s0 && !(st0 && st0.dist <= 800)) add(att, "transport", `Aucun arrêt de transport en commun à moins de ${fmtDist(CONFIG.radiusStops)}`, "Selon les réseaux publiant leurs données ; prévoyez un véhicule");
+    }
+  }
+  // Commerces
+  if (R.shops?.data) {
+    const it = R.shops.data.items, sup = it.find(x => ["B104", "B105"].includes(x.code)), prox = it.find(x => ["B201", "B202"].includes(x.code));
+    if (sup) add(fort, "shops", `${sup.label} à ${fmtDist(sup.dist)}`, sup.name || "Commerce alimentaire");
+    else if (prox && prox.dist <= 500) add(fort, "shops", `${prox.label} à ${fmtDist(prox.dist)}`, `Pas de supermarché à moins de ${fmtDist(CONFIG.radiusShops)}`);
+    if (!sup) add(att, "shops", `Aucun supermarché à moins de ${fmtDist(CONFIG.radiusShops)}`, prox ? "Petits commerces seulement à proximité" : "Courses en voiture à prévoir");
+  }
   // Connexion
   if (R.arcep?.data && R.arcep.data.locaux) {
     const p = R.arcep.data.ftth / R.arcep.data.locaux * 100;
-    if (p >= 90) add(fort, "arcep", `Fibre : ${Math.round(p)} % des locaux de la commune raccordables`, "Vérifiez l'adresse exacte sur Ma connexion internet");
-    else if (p < 60) add(att, "arcep", `Fibre : seulement ${Math.round(p)} % des locaux de la commune raccordables`, "Télétravail : vérifiez l'éligibilité exacte de l'adresse");
+    if (p >= 90) add(fort, "arcep", `Fibre : ${fmtPct(p)} des locaux de la commune raccordables`, "Vérifiez l'adresse exacte sur Ma connexion internet");
+    else if (p < 60) add(att, "arcep", `Fibre : seulement ${fmtPct(p)} des locaux de la commune raccordables`, "Télétravail : vérifiez l'éligibilité exacte de l'adresse");
   }
   // Écoles
   if (R.schools?.data) {
@@ -856,15 +1109,17 @@ function renderSynthesis() {
   const li = (x) => `<li>${esc(x.text)}<small>${esc(x.detail || "")}${x.missing ? "" : ` · ${esc(SOURCES[x.id].short)}`}</small></li>`;
   const down = THEMES.filter(id => R[id] && R[id].status === "error");
   if (down.length) att.push({id: down[0], text: `Analyse incomplète : ${down.map(id => SOURCES[id].short).join(", ")} indisponible${down.length > 1 ? "s" : ""}`, detail: "Ces thèmes n'ont pas pu être vérifiés : réessayez ou consultez la source", missing: true});
-  $("#att-list").innerHTML = att.map(li).join("") || `<li>Aucun point d'attention détecté dans les sources disponibles.</li>`;
-  $("#fort-list").innerHTML = fort.map(li).join("") || `<li>Aucun point fort détecté dans les sources disponibles.</li>`;
+  $("#att-list").innerHTML = att.map(li).join("") || `<li class="pending">Aucun point d'attention détecté dans les sources disponibles.</li>`;
+  $("#fort-list").innerHTML = fort.map(li).join("") || `<li class="pending">Aucun point fort détecté dans les sources disponibles.</li>`;
+  $("#att-count").textContent = att.length; $("#fort-count").textContent = fort.length;
 }
 
 /* ============================ Carte ============================ */
 const LAYER_DEFS = {
   dvf: {label: "Ventes (DVF)", color: "#0b4f6c"}, dpe: {label: "DPE voisins", color: "#ec7d2d"},
   schools: {label: "Écoles", color: "#7c3aed"}, noise: {label: "Axes bruyants", color: "#b91c1c"},
-  georisques: {label: "Industries et sites pollués", color: "#78350f"}
+  georisques: {label: "Industries et sites pollués", color: "#78350f"},
+  transport: {label: "Transports en commun", color: "#0e7490"}, shops: {label: "Commerces alimentaires", color: "#15803d"}
 };
 function initMap() {
   const el = $("#map");
@@ -876,7 +1131,7 @@ function initMap() {
     const osm = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {maxZoom: 19, attribution: "© contributeurs OpenStreetMap"});
     ign.addTo(state.map);
     L.control.layers({"Plan IGN": ign, "OpenStreetMap": osm}, null, {position: "topright"}).addTo(state.map);
-    $("#layer-toggles").innerHTML = Object.entries(LAYER_DEFS).map(([k, v]) => `<label><input type="checkbox" checked data-layer="${k}"> ${esc(v.label)}</label>`).join("");
+    $("#layer-toggles").innerHTML = Object.entries(LAYER_DEFS).map(([k, v]) => `<label><input type="checkbox" checked data-layer="${k}"><i style="background:${v.color}" aria-hidden="true"></i>${esc(v.label)}</label>`).join("");
     $("#layer-toggles").addEventListener("change", (e) => { const k = e.target.dataset.layer; const g = state.layers[k]; if (!g) return; e.target.checked ? g.addTo(state.map) : state.map.removeLayer(g); });
     $("#legend").innerHTML = `<span><i style="background:#111"></i>Adresse</span>` + Object.values(LAYER_DEFS).map(v => `<span><i style="background:${v.color}"></i>${esc(v.label)}</span>`).join("") + `<span>Cercle : rayon de ${CONFIG.radiusSales} m</span>`;
   }
@@ -896,6 +1151,8 @@ function updateMap(id) {
   if (id === "dpe") { const C = {A: "#008a5e", B: "#33a357", C: "#9dc76c", D: "#f2e33a", E: "#f2b33b", F: "#ec7d2d", G: "#d1281f"}; r.data.nearby.forEach(s => dot(s.lat, s.lon, C[s.label], `DPE <strong>${esc(s.label)}</strong>${s.conso ? ` – ${fmtInt(s.conso)} kWh/m²/an` : ""}<br>${esc(s.address || "")}<br>${fmtDate(s.date)}`)); }
   if (id === "schools") r.data.list.forEach(s => dot(s.lat, s.lon, LAYER_DEFS.schools.color, `<strong>${esc(s.name)}</strong><br>${esc(s.type || "")} · ${esc(s.statut || "")}<br>${fmtDist(s.dist)}`));
   if (id === "georisques") (r.data.sites || []).forEach(x => dot(x.lat, x.lon, LAYER_DEFS.georisques.color, `<strong>${esc(x.name || "")}</strong><br>${x.kind === "icpe" ? "Installation classée" : x.kind === "sol" ? "Site ou sol pollué" : "Ancien site industriel (CASIAS)"}${x.info ? ` · ${esc(x.info)}` : ""}<br>${fmtDist(x.dist)}`));
+  if (id === "transport") { (r.data.stops || []).forEach(x => dot(x.lat, x.lon, LAYER_DEFS.transport.color, `Arrêt <strong>${esc(x.name)}</strong><br>${esc(x.networks.join(", "))}<br>${fmtDist(x.dist)}`)); (r.data.stations || []).forEach(x => dot(x.lat, x.lon, LAYER_DEFS.transport.color, `<strong>${esc(stationLabel(x))}</strong><br>${fmtDist(x.dist)}`)); }
+  if (id === "shops") r.data.items.forEach(x => dot(x.lat, x.lon, LAYER_DEFS.shops.color, `<strong>${esc(x.name || x.label)}</strong><br>${esc(x.label)}${x.address ? " · " + esc(x.address) : ""}<br>${fmtDist(x.dist)}`));
   if (id === "noise") { r.data.ways.forEach(w => w.geom && L.polyline(w.geom.map(p => [p.lat, p.lon]), {color: LAYER_DEFS.noise.color, weight: w.type === "motorway" ? 6 : 4, opacity: .7}).bindPopup(`${esc(w.name || w.type)} – ${fmtDist(w.dist)}${tag}`).addTo(g)); r.data.airports.forEach(a => dot(a.lat, a.lon, LAYER_DEFS.noise.color, `Aéroport ${esc(a.name)} – ${fmtDist(a.dist)}`)); }
   state.layers[id] = g;
   const cb = document.querySelector(`[data-layer="${id}"]`);
@@ -951,7 +1208,7 @@ document.addEventListener("click", (e) => { const b = e.target.closest("[data-re
 
 /* ============================ Actions rapport ============================ */
 $("#print-btn").addEventListener("click", () => window.print());
-$("#new-btn").addEventListener("click", () => { $("#report").hidden = true; $("#value").hidden = false; history.replaceState(null, "", location.pathname); input.value = ""; input.focus(); window.scrollTo(0, 0); });
+$("#new-btn").addEventListener("click", () => { $("#report").hidden = true; $("#value").hidden = false; document.body.classList.remove("has-report"); history.replaceState(null, "", location.pathname); input.value = ""; input.focus(); window.scrollTo(0, 0); });
 $("#share-btn").addEventListener("click", async () => {
   const url = location.href, msg = $("#share-msg");
   try {
@@ -961,7 +1218,7 @@ $("#share-btn").addEventListener("click", async () => {
 });
 
 /* ============================ Écran d'accueil ============================ */
-$("#sources-grid").innerHTML = ["ban", ...THEMES].map(id => `<li><strong>${esc(SOURCES[id].short)}</strong><span>${esc(SOURCES[id].what)} · ${esc(SOURCES[id].producer)}</span></li>`).join("");
+$("#sources-grid").innerHTML = ["ban", ...THEMES].map(id => `<li><span class="ico-box">${icon(id)}</span><span><strong>${esc(SOURCES[id].short)}</strong><span class="t">${esc(SOURCES[id].what)} · ${esc(SOURCES[id].producer)}</span></span></li>`).join("");
 
 // Ouverture d'un lien partagé
 (function fromHash() {

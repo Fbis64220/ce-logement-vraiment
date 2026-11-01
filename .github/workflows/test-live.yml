@@ -1,0 +1,25 @@
+name: Test contre les vraies API
+# Lance le rapport complet dans un vrai navigateur, contre les API publiques réelles.
+on:
+  workflow_dispatch:
+    inputs:
+      adresses:
+        description: "Adresses séparées par |"
+        required: false
+        default: "144 Rue Roustaing 33400 Talence|20 avenue de Ségur 75007 Paris|8 boulevard du Port 80000 Amiens|12 rue de la République 13002 Marseille|1 place de la Mairie 23000 Saint-Fiel"
+jobs:
+  live:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: npm install --no-save playwright@1.48.2 && npx playwright install --with-deps chromium
+      - name: Rapport réel sur plusieurs adresses
+        env:
+          ADDRS: ${{ inputs.adresses }}
+          OUT: ${{ runner.temp }}
+        run: node tests/live.test.js
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: { name: captures, path: "${{ runner.temp }}/live-*.png" }

@@ -32,6 +32,14 @@ const G = {
 // Géoplateforme WFS : BD TOPO (routes, voies ferrées) et PEB DGAC
 const roads = { type: 'FeatureCollection', features: [{ type: 'Feature', geometry: { type: 'LineString', coordinates: [[LON - 0.002, LAT + 0.0003], [LON + 0.002, LAT + 0.0003]] }, properties: { importance: '2', nature: 'Route à 2 chaussées', nom_voie_ban_gauche: 'Boulevard du Port', date_modification: '2026-05-01T00:00:00Z' } }] };
 const empty = { type: 'FeatureCollection', features: [] };
+const stops = { type: 'FeatureCollection', features: [
+  { type: 'Feature', geometry: { type: 'Point', coordinates: [LON + 0.001, LAT] }, properties: { stop_name: 'Beffroi', dataset_title: 'Réseau urbain Ametis', location_type: 0 } },
+  { type: 'Feature', geometry: { type: 'Point', coordinates: [LON + 0.0011, LAT] }, properties: { stop_name: 'BEFFROI', dataset_title: 'Trains et cars régionaux', location_type: 0 } },
+  { type: 'Feature', geometry: { type: 'Point', coordinates: [LON, LAT + 0.004] }, properties: { stop_name: 'Gare du Nord', dataset_title: 'Réseau urbain Ametis', location_type: 0 } },
+  { type: 'Feature', geometry: { type: 'Point', coordinates: [LON, LAT + 0.02] }, properties: { stop_name: 'Trop loin', dataset_title: 'X', location_type: 0 } }] };
+const stations = { type: 'FeatureCollection', features: [{ type: 'Feature', geometry: { type: 'Point', coordinates: [LON + 0.008, LAT] }, properties: { nature: 'Gare voyageurs uniquement', toponyme: "Gare d'Amiens" } }] };
+const shopsFx = { millesime: '2025', categories: { B104: 'Hypermarché', B105: 'Supermarché', B201: 'Supérette', B202: 'Épicerie', B207: 'Boulangerie' },
+  items: [[LAT + 0.002, LON, 'B207', 'AUX BONS PAINS', '1 RUE TEST'], [LAT + 0.004, LON, 'B105', 'SUPER TEST', '2 RUE TEST'], [LAT + 0.1, LON, 'B104', 'TROP LOIN', '']] };
 const edu = { total_count: 3, results: [
   { nom_etablissement: 'École élémentaire Test', type_etablissement: 'Ecole', statut_public_prive: 'Public', etat: 'OUVERT', position: { lat: LAT + 0.002, lon: LON }, adresse_1: '1 rue', code_postal: '80000', nom_commune: 'Amiens', date_maj_ligne: '2026-10-31' },
   { nom_etablissement: 'Collège Test', type_etablissement: 'Collège', statut_public_prive: 'Public', etat: 'OUVERT', position: { lat: LAT + 0.006, lon: LON } },
@@ -55,6 +63,7 @@ const json = (route, body) => route.fulfill({ status: 200, contentType: 'applica
 async function setup(page, mode) {
   await page.route('**/*', async route => {
     const u = route.request().url();
+    if (u.includes('/data/commerces/') && mode !== 'offline') return json(route, shopsFx);
     if (u.includes('/data/arcep/') && mode !== 'offline') return json(route, { date: '2026-06-30', communes: { '80021': { nom: 'Amiens', locaux: 91983, ftth: 89735, cable: 0, cuivre: 91982, thd_radio: 0, '4g_fixe': 91788, satellite: 91976, thd30: 91983, thd100: 91983, thd1g: 89735, inel_hd: 0 } } });
     if (u.startsWith('http://127.0.0.1')) return mode === 'offline' && u.includes('/data/') ? route.abort() : route.continue();
     if (u.includes('cdnjs.cloudflare.com/ajax/libs/leaflet') && LEAFLET) {
@@ -67,7 +76,8 @@ async function setup(page, mode) {
     if (u.includes('dvf_opendata')) return json(route, u.includes('codtypbien=111') ? dvfMai : dvfApt);
     if (u.includes('dpe03existant')) return json(route, u.endsWith(',25') ? dpeSame : dpeNear);
     if (u.includes('georisques.gouv.fr/api/v1/')) { const k = u.split('/api/v1/')[1].split('?')[0]; return G[k] ? json(route, G[k]) : route.fulfill({ status: 404, headers: cors, body: '' }); }
-    if (u.includes('/wfs/')) return json(route, u.includes('troncon_de_route') ? roads : empty);
+    if (u.includes('gtfs-stops')) return json(route, stops);
+    if (u.includes('/wfs/')) return json(route, u.includes('troncon_de_route') ? roads : u.includes('equipement_de_transport') ? stations : empty);
     if (u.includes('fr-en-annuaire-education')) return json(route, edu);
     if (u.includes('hubeau')) return json(route, hubeau);
     return route.fulfill({ status: 204, headers: cors, body: '' }); // tuiles, etc.
@@ -86,13 +96,13 @@ async function setup(page, mode) {
     await page.waitForSelector('#search-msg .msg.error'); check(true, 'A: message explicite si la BAN est injoignable');
     check(await page.locator('#demo-btn, [data-run-demo]').count() === 0, 'A: aucun mode démo');
     await page.goto('about:blank'); await page.goto(base + '#a=8%20Boulevard%20du%20Port%2080000%20Amiens&lat=49.8941&lon=2.2958&c=80021');
-    await page.waitForFunction(() => document.querySelectorAll('.src').length === 7, null, { timeout: 30000 });
+    await page.waitForFunction(() => document.querySelectorAll('.src').length === 9, null, { timeout: 30000 });
     await page.waitForFunction(() => !document.querySelector('#att-list').textContent.includes('Analyse en cours'));
-    const txt = await page.textContent('#report');
-    check(await page.locator('#coverage .st.error').count() === 7, 'A: 7 sources marquées « Indisponible »');
+    const txt = await page.textContent('#groups') + await page.textContent('#keyfigs');
+    check(await page.locator('#coverage .st.error').count() === 9, 'A: 9 sources marquées « Indisponible »');
     check(!/exemple/i.test(txt) && !/€/.test(txt), 'A: aucune donnée d\'exemple ni aucun prix affiché');
     check(/Rapport incomplet/.test(await page.textContent('#missing-banner')), 'A: bandeau « rapport incomplet »');
-    check(await page.locator('[data-retry]').count() === 7, 'A: bouton « Réessayer » sur chaque fiche');
+    check(await page.locator('[data-retry]').count() === 9, 'A: bouton « Réessayer » sur chaque fiche');
     check(/Analyse incomplète/.test(await page.textContent('#att-list')) && await page.locator('#fort-list li').count() === 1, 'A: synthèse signale l\'analyse incomplète, aucun point fort inventé');
     check(errs.length === 0, 'A: aucune erreur JS ' + errs.join(' | '));
     await page.screenshot({ path: path.join(OUT, 'hors-ligne.png'), fullPage: true }); await page.close(); }
@@ -122,7 +132,7 @@ async function setup(page, mode) {
     await page.keyboard.press('Enter');
     await page.waitForFunction(() => !document.querySelector('#att-list').textContent.includes('Analyse en cours'), null, { timeout: 20000 });
     const cov = await page.locator('#coverage li').allTextContents();
-    check(await page.locator('#coverage .st.live').count() === 8, 'B: 8 sources réelles → ' + cov.map(c => c.slice(0, 30)).join(' / '));
+    check(await page.locator('#coverage .st.live').count() === 10, 'B: 10 sources réelles → ' + cov.map(c => c.slice(0, 30)).join(' / '));
     const dvf = await page.textContent('#card-dvf'); check(/€/.test(dvf) && /30 ventes/.test(dvf), 'B: DVF agrégé (30 ventes, dépendance exclue)');
     check(/Classe D/.test(await page.textContent('#card-dpe')), 'B: DPE de l\'adresse (identifiant BAN)');
     check(/Inondation/.test(await page.textContent('#att-list')), 'B: risque inondation en point d\'attention');
@@ -133,15 +143,24 @@ async function setup(page, mode) {
     check(/Seveso/.test(await page.textContent('#att-list')), 'B: installation Seveso à moins de 1 km signalée');
     check(!/Lycée fermé/.test(await page.textContent('#card-schools')), 'B: établissements fermés exclus');
     check(/1 non-conformité/.test(await page.textContent('#card-water')), 'B: Hub\'Eau dédoublonné par prélèvement');
+    const tr = await page.textContent('#card-transport');
+    check(/Beffroi/.test(tr) && /Ametis, Trains et cars/.test(tr) && !/Trop loin/.test(tr), 'B: arrêts dédoublonnés par nom, réseaux fusionnés, rayon respecté');
+    check(/Gare d'Amiens/.test(tr), 'B: gare BD TOPO');
+    const sh = await page.textContent('#card-shops');
+    check(/SUPER TEST/.test(sh) && !/TROP LOIN/.test(sh), 'B: commerces dans le rayon de 1 km');
+    check(/Supermarché à 4/.test(await page.textContent('#fort-list')), 'B: supermarché en point fort');
+    check(await page.locator('#keyfigs .kf').count() === 8 && !/…/.test(await page.textContent('#keyfigs')), 'B: 8 chiffres clés renseignés');
+    check(/✓ 10\/10/.test(await page.textContent('#cov-chip')), 'B: indicateur 10/10 sources');
+    check(await page.evaluate(() => document.body.classList.contains('has-report') && getComputedStyle(document.querySelector('.hero h1')).display === 'none'), 'B: recherche compactée pendant le rapport');
     check(/97,6 %/.test(await page.textContent('#card-arcep')), 'B: Arcep : 97,6 % de locaux raccordables à la fibre');
-    check(await page.locator('.src').count() === 7 && /Consulté le/.test(await page.textContent('.src')), 'B: source + date sur chaque fiche');
+    check(await page.locator('.src').count() === 9 && /Consulté le/.test(await page.textContent('.src')), 'B: source + date sur chaque fiche');
     check(await page.locator('.leaflet-interactive').count() > 10, 'B: couches sur la carte');
     check(/lat=49\.894100/.test(page.url()), 'B: URL partageable');
     check(errs.length === 0, 'B: aucune erreur JS ' + errs.join(' | '));
     await page.screenshot({ path: path.join(OUT, 'rapport.png'), fullPage: true });
     // lien partagé rouvert sur mobile
     const m = await browser.newPage({ viewport: { width: 390, height: 844 } }); await setup(m, 'live'); await m.goto(page.url());
-    await m.waitForFunction(() => document.querySelectorAll('.src').length === 7);
+    await m.waitForFunction(() => document.querySelectorAll('.src').length === 9);
     const sw = await m.evaluate(() => document.documentElement.scrollWidth); check(sw <= 390, 'B: mobile sans défilement horizontal (' + sw + 'px)');
     await m.screenshot({ path: path.join(OUT, 'rapport-mobile.png'), fullPage: true }); }
 
