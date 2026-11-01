@@ -21,4 +21,4 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898900+github-actions[bot]@users.noreply.github.com"
           git commit -m "Données Arcep : mise à jour $(python3 -c "import json;print(json.load(open('data/arcep/index.json'))['date'])")"
-          git push
+          git pull --rebase -q origin main && git push

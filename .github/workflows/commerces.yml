@@ -1,0 +1,24 @@
+name: Données commerces (BPE INSEE)
+# La BPE est publiée une fois par an ; une vérification mensuelle suffit.
+on:
+  schedule:
+    - cron: "41 5 4 * *"
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: pip install -q pyarrow
+      - name: Construire data/commerces/*.json
+        run: python3 scripts/build_commerces.py
+      - name: Publier si les données ont changé
+        run: |
+          git add data/commerces
+          if git diff --cached --quiet; then echo "Aucun changement"; exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898900+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Données commerces : BPE $(python3 -c "import json;print(json.load(open('data/commerces/index.json'))['millesime'])")"
+          git pull --rebase -q origin main && git push
