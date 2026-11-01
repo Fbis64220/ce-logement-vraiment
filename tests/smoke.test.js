@@ -79,18 +79,38 @@ async function setup(page, mode) {
   const browser = await chromium.launch(); let failures = 0;
   const check = (c, m) => { console.log((c ? 'OK   ' : 'FAIL ') + m); if (!c) failures++; };
 
-  // A. hors ligne
+  // A. hors ligne : jamais de valeur inventée
   { const page = await browser.newPage(); const errs = []; page.on('pageerror', e => errs.push(e.message));
     await setup(page, 'offline'); await page.goto(base);
     await page.fill('#addr', '8 boulevard du Port Amiens'); await page.click('button[type=submit]');
     await page.waitForSelector('#search-msg .msg.error'); check(true, 'A: message explicite si la BAN est injoignable');
-    await page.click('[data-run-demo]'); await page.waitForFunction(() => document.querySelectorAll('.src').length === 7);
+    check(await page.locator('#demo-btn, [data-run-demo]').count() === 0, 'A: aucun mode démo');
+    await page.goto('about:blank'); await page.goto(base + '#a=8%20Boulevard%20du%20Port%2080000%20Amiens&lat=49.8941&lon=2.2958&c=80021');
+    await page.waitForFunction(() => document.querySelectorAll('.src').length === 7, null, { timeout: 30000 });
     await page.waitForFunction(() => !document.querySelector('#att-list').textContent.includes('Analyse en cours'));
-    check(await page.locator('.banner.sample').count() === 1, 'A: bandeau « données d\'exemple » affiché');
-    check(await page.locator('#coverage .st.sample').count() === 8, 'A: 8 sources marquées « Exemple »');
-    check((await page.locator('#att-list li').count()) > 0 && (await page.locator('#fort-list li').count()) > 0, 'A: points d\'attention et points forts calculés');
+    const txt = await page.textContent('#report');
+    check(await page.locator('#coverage .st.error').count() === 7, 'A: 7 sources marquées « Indisponible »');
+    check(!/exemple/i.test(txt) && !/€/.test(txt), 'A: aucune donnée d\'exemple ni aucun prix affiché');
+    check(/Rapport incomplet/.test(await page.textContent('#missing-banner')), 'A: bandeau « rapport incomplet »');
+    check(await page.locator('[data-retry]').count() === 7, 'A: bouton « Réessayer » sur chaque fiche');
+    check(/Analyse incomplète/.test(await page.textContent('#att-list')) && await page.locator('#fort-list li').count() === 1, 'A: synthèse signale l\'analyse incomplète, aucun point fort inventé');
     check(errs.length === 0, 'A: aucune erreur JS ' + errs.join(' | '));
-    await page.screenshot({ path: path.join(OUT, 'demo-offline.png'), fullPage: true }); await page.close(); }
+    await page.screenshot({ path: path.join(OUT, 'hors-ligne.png'), fullPage: true }); await page.close(); }
+
+  // C. pannes partielles : Hub'Eau en panne puis rétabli ; Géorisques « argiles » en panne
+  { const page = await browser.newPage(); const errs = []; page.on('pageerror', e => errs.push(e.message));
+    let waterDown = true;
+    await setup(page, 'live'); // la route déclarée en dernier est prioritaire
+    await page.route(/hubeau|\/api\/v1\/rga/, r => (waterDown || r.request().url().includes('/rga')) ? r.fulfill({ status: 503, headers: { 'access-control-allow-origin': '*' }, body: '' }) : r.fallback()); await page.goto(base + '#a=8%20Boulevard%20du%20Port%2080000%20Amiens&lat=49.8941&lon=2.2958&c=80021&id=80021_6590_00008');
+    await page.waitForFunction(() => !document.querySelector('#att-list').textContent.includes('Analyse en cours'), null, { timeout: 30000 });
+    check(/Information non disponible/.test(await page.textContent('#card-water')), 'C: eau indisponible signalée, sans valeur');
+    check(/Non vérifié.*argiles/.test(await page.textContent('#card-georisques')), 'C: argiles « non vérifié » dans la fiche risques');
+    check(/Risques non vérifiés : argiles/.test(await page.textContent('#att-list')) && !/Aucun risque/.test(await page.textContent('#fort-list')), 'C: pas de « aucun risque » quand un thème manque');
+    waterDown = false; await page.click('#card-water [data-retry]');
+    await page.waitForFunction(() => /non-conformité/.test(document.querySelector('#card-water').textContent), null, { timeout: 15000 });
+    check(true, 'C: « Réessayer » recharge la source rétablie');
+    check(!/Eau/.test(await page.textContent('#missing-banner')), 'C: bandeau mis à jour après la nouvelle tentative');
+    check(errs.length === 0, 'C: aucune erreur JS ' + errs.join(' | ')); await page.close(); }
 
   // B. API simulées
   { const page = await browser.newPage({ viewport: { width: 1280, height: 900 } }); const errs = []; page.on('pageerror', e => errs.push(e.message));

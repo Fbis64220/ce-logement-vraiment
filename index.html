@@ -91,14 +91,13 @@ a:hover{text-decoration-thickness:2px}
 .report-head .meta{color:var(--ink-2);font-size:.9rem;margin:.2rem 0 0}
 .actions{display:flex;flex-wrap:wrap;gap:.5rem}
 .banner{padding:.8rem 1rem;border-radius:10px;margin:0 0 1rem;font-size:.95rem}
-.banner.sample{background:var(--warn-bg);border:1px solid #fcd34d;color:#78350f}
+.banner.missing{background:var(--warn-bg);border:1px solid #fcd34d;color:#78350f}
 .coverage{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:1rem;margin-bottom:1rem}
 .coverage h3{margin:0 0 .6rem;font-size:1rem}
 .coverage ul{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:.4rem}
 .coverage li{display:flex;gap:.5rem;align-items:flex-start;font-size:.88rem;padding:.35rem .5rem;border-radius:8px;background:var(--surface-2)}
 .st{font-weight:700;font-size:.75rem;border-radius:999px;padding:.05rem .5rem;white-space:nowrap;flex:none}
 .st.live{background:var(--ok-bg);color:var(--ok)}
-.st.sample{background:var(--warn-bg);color:var(--warn)}
 .st.error{background:var(--bad-bg);color:var(--bad)}
 .st.loading{background:var(--info-bg);color:var(--info)}
 .st.empty{background:#e5e7eb;color:#374151}
@@ -140,7 +139,6 @@ a:hover{text-decoration-thickness:2px}
 .src .st{margin-right:.3rem}
 .card-msg{padding:.7rem .8rem;border-radius:8px;font-size:.92rem;margin:.2rem 0 .6rem}
 .card-msg.error{background:var(--bad-bg);color:var(--bad)}
-.card-msg.sample{background:var(--warn-bg);color:#78350f}
 .card-msg.empty{background:var(--surface-2);color:var(--ink)}
 .skeleton{height:90px;border-radius:8px;background:linear-gradient(90deg,#eee 25%,#f6f6f6 50%,#eee 75%);background-size:200% 100%;animation:sh 1.2s infinite}
 @keyframes sh{to{background-position:-200% 0}}
@@ -217,7 +215,6 @@ footer p{margin:.3rem 0}
           <button type="button" class="chip" data-example="20 avenue de Ségur 75007 Paris">Paris 7e</button>
           <button type="button" class="chip" data-example="8 boulevard du Port 80000 Amiens">Amiens</button>
           <button type="button" class="chip" data-example="1 place de la Bourse 33000 Bordeaux">Bordeaux</button>
-          <button type="button" class="chip" id="demo-btn">Démo hors ligne (données d'exemple)</button>
         </div>
         <div id="search-msg" role="status" aria-live="polite"></div>
       </form>
@@ -269,7 +266,7 @@ footer p{margin:.3rem 0}
         </div>
       </div>
       <div id="share-msg" role="status" aria-live="polite" class="no-print"></div>
-      <div id="sample-banner"></div>
+      <div id="missing-banner" role="status" aria-live="polite"></div>
 
       <section class="coverage" aria-labelledby="h-cov">
         <h3 id="h-cov">Sources interrogées pour cette adresse</h3>
@@ -303,7 +300,7 @@ footer p{margin:.3rem 0}
 <footer>
   <div class="wrap">
     <p><strong>Vie privée :</strong> aucun compte, aucun cookie, aucun traceur. L'adresse saisie est envoyée directement depuis votre navigateur aux services publics interrogés, et n'est enregistrée nulle part par ce site.</p>
-    <p><strong>Données :</strong> données publiques réutilisées sous Licence Ouverte Etalab 2.0, sauf mention contraire (OpenStreetMap : ODbL). Prototype : les blocs marqués « Exemple » ne décrivent pas la réalité.</p>
+    <p><strong>Données :</strong> uniquement des données publiques réelles, réutilisées sous Licence Ouverte Etalab 2.0. Aucune valeur n'est inventée ni estimée par défaut : si une source ne répond pas, le rapport l'indique.</p>
   </div>
 </footer>
 
@@ -322,7 +319,6 @@ const CONFIG = {
   radiusSchools: 1000,   // m
   radiusNoise: 400,      // m – axes routiers / ferrés
   radiusAirport: 8000,   // m – aéroports dotés d'un plan d'exposition au bruit (PEB)
-  fallbackToSample: true, // prototype : si une source échoue, on affiche un exemple SIGNALÉ
   endpoints: {
     ban: ["https://data.geopf.fr/geocodage/search", "https://api-adresse.data.gouv.fr/search/"],
     dvf: "https://apidf-preprod.cerema.fr/dvf_opendata/geomutations/", // DVF+ open data (Cerema), CORS ouvert
@@ -427,69 +423,6 @@ function mainCityCode(c) {
   return c;
 }
 function depFromCity(c) { return c.startsWith("97") ? c.slice(0, 3) : c.slice(0, 2); }
-
-/* ====================== Données d'exemple (SIGNALÉES) ======================
-   Générées de façon déterministe autour du point demandé, pour que le
-   prototype reste démontrable quand une API est injoignable. Elles ne
-   décrivent PAS la réalité et sont toujours étiquetées « Exemple ». */
-function rng(seed) { let a = seed >>> 0; return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
-function around(r, lat, lon, maxM) { const d = Math.sqrt(r()) * maxM, a = r() * 2 * Math.PI; return {lat: lat + d * Math.cos(a) / 110540, lon: lon + d * Math.sin(a) / (111320 * Math.cos(lat * Math.PI / 180))}; }
-const SAMPLE = {
-  seed(ctx, salt) { return Math.round(ctx.lat * 1e4) * 31 + Math.round(ctx.lon * 1e4) * 17 + salt; },
-  dvf(ctx) {
-    const r = rng(this.seed(ctx, 1)), base = 2500 + r() * 4500, sales = [];
-    const now = new Date();
-    for (let i = 0; i < 42; i++) {
-      const p = around(r, ctx.lat, ctx.lon, CONFIG.radiusSales), isApt = r() < .7;
-      const surf = Math.round(isApt ? 25 + r() * 75 : 70 + r() * 90);
-      const ppm = base * (0.8 + r() * 0.4) * (isApt ? 1 : 0.9);
-      const d = new Date(now.getFullYear(), now.getMonth() - 4 - Math.floor(r() * 32), 1 + Math.floor(r() * 27));
-      sales.push({date: d.toISOString().slice(0, 10), type: isApt ? "Appartement" : "Maison", surface: surf, price: Math.round(ppm * surf / 1000) * 1000, ppm, rooms: Math.max(1, Math.round(surf / 22)), lat: p.lat, lon: p.lon, dist: haversine(ctx.lat, ctx.lon, p.lat, p.lon), address: "Adresse d'exemple"});
-    }
-    return {sales, updated: sales.map(s => s.date).sort().pop()};
-  },
-  dpe(ctx) {
-    const r = rng(this.seed(ctx, 2)), L = "ABCDEFG", list = [];
-    const w = [.03, .07, .2, .3, .22, .11, .07];
-    const draw = () => { let x = r(), i = 0; while (x > w[i] && i < 6) { x -= w[i]; i++; } return L[i]; };
-    for (let i = 0; i < 60; i++) { const p = around(r, ctx.lat, ctx.lon, CONFIG.radiusDpe); const e = draw(); list.push({label: e, ges: draw(), conso: Math.round(60 + L.indexOf(e) * 60 + r() * 50), surface: Math.round(30 + r() * 80), year: Math.round(1900 + r() * 115), date: new Date(Date.now() - r() * 3 * 365 * 864e5).toISOString().slice(0, 10), lat: p.lat, lon: p.lon, dist: haversine(ctx.lat, ctx.lon, p.lat, p.lon), address: "Adresse d'exemple", type: r() < .7 ? "appartement" : "maison"}); }
-    const same = list.slice(0, 2).map(d => ({...d, lat: ctx.lat, lon: ctx.lon, dist: 0, label: "E", conso: 280}));
-    return {nearby: list, same};
-  },
-  georisques(ctx) {
-    const it = (group, key, label, present, statut, alert, level) => ({group, key, label, present, statut, alert, level});
-    return {
-      items: [
-        it("nat", "inondation", "Inondation", true, "Commune couverte par un atlas des zones inondables", true),
-        it("nat", "argiles", "Retrait-gonflement des argiles", true, "Exposition moyenne", true, 2),
-        it("nat", "seisme", "Séisme", true, "Zone de sismicité 2 (faible)", false, 2),
-        it("nat", "radon", "Radon", false, "Potentiel de catégorie 1 (faible)", false, 1),
-        it("tech", "icpe", "Installations industrielles (ICPE)", true, "2 installations à moins de 1 km, aucune Seveso", false),
-        it("tech", "sols", "Pollution des sols", false, "Aucun site pollué connu à moins de 500 m", false)],
-      sites: [], communeRisks: ["Inondation", "Mouvement de terrain", "Séisme"],
-      catnat: [{date: "2021-06-19", label: "Inondations et/ou coulées de boue"}, {date: "2018-07-01", label: "Sécheresse"}, {date: "2016-05-30", label: "Inondations et/ou coulées de boue"}],
-      catnatTotal: 6, url: "https://www.georisques.gouv.fr/mes-risques/connaitre-les-risques-pres-de-chez-moi"
-    };
-  },
-  noise(ctx) {
-    const r = rng(this.seed(ctx, 4));
-    const mk = (type, name, dist) => ({type, name, dist, geom: [around(r, ctx.lat, ctx.lon, dist * 1.4), around(r, ctx.lat, ctx.lon, dist * 1.4)]});
-    return {ways: [mk("primary", "Avenue d'exemple", 120), mk("rail", "Voie ferrée d'exemple", 310)], airports: [], updated: null};
-  },
-  arcep() {
-    return {nom: "Commune d'exemple", locaux: 12000, ftth: 11280, cable: 0, cuivre: 11950, thd_radio: 0, "4g_fixe": 9000, satellite: 12000, thd30: 11900, thd100: 11500, thd1g: 11280, inel_hd: 0, date: null};
-  },
-  schools(ctx) {
-    const r = rng(this.seed(ctx, 6)), list = [];
-    const types = [["Ecole", "École élémentaire d'exemple"], ["Ecole", "École maternelle d'exemple"], ["Collège", "Collège d'exemple"], ["Lycée", "Lycée d'exemple"], ["Ecole", "École primaire privée d'exemple"]];
-    types.forEach(([t, n], i) => { const p = around(r, ctx.lat, ctx.lon, CONFIG.radiusSchools); list.push({name: n, type: t, statut: i === 4 ? "Privé" : "Public", lat: p.lat, lon: p.lon, dist: haversine(ctx.lat, ctx.lon, p.lat, p.lon), address: "Adresse d'exemple"}); });
-    return {list};
-  },
-  water() {
-    const d = new Date(Date.now() - 20 * 864e5).toISOString().slice(0, 10);
-    return {samples: 14, nonConformBact: 0, nonConformPc: 0, last: {date: d, conclusion: "Eau d'alimentation conforme aux exigences de qualité en vigueur pour l'ensemble des paramètres mesurés."}, distributor: "Distributeur d'exemple", updated: d};
-  }
-};
 
 /* ============================ Géocodage (BAN) ============================ */
 async function banSearch(q, limit = 5) {
@@ -621,7 +554,8 @@ const CONNECTORS = {
     const toISO = (d) => { const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(d || ""); return m ? `${m[3]}-${m[2]}-${m[1]}` : d; };
     let catnat = [], catnatTotal = null;
     if (R.catnat) { catnatTotal = R.catnat.results ?? (R.catnat.data || []).length; catnat = (R.catnat.data || []).map(a => ({date: toISO(a.date_debut_evt), label: a.libelle_risque_jo})).sort((a, b) => String(b.date).localeCompare(String(a.date))); }
-    const failed = keys.filter(k => !R[k]);
+    const LBL = {risques: "risques de la commune", azi: "zones inondables", tri: "territoires à risque d'inondation", sismique: "sismicité", rga: "argiles", radon: "radon", icpe: "installations industrielles", ssp: "sites et sols pollués", cavites: "cavités", mvt: "mouvements de terrain", catnat: "arrêtés CatNat"};
+    const failed = keys.filter(k => !R[k]).map(k => LBL[k]);
     return {items, sites, communeRisks, catnat, catnatTotal, failed, url: `https://www.georisques.gouv.fr/mes-risques/connaitre-les-risques-pres-de-chez-moi/rapport2?form-commune=true&codeInsee=${insee}&lon=${ctx.lon}&lat=${ctx.lat}&isCadastre=false`};
   },
 
@@ -676,39 +610,40 @@ const CONNECTORS = {
 };
 
 /* ============================ Orchestration ============================ */
-const state = {ctx: null, results: {}, map: null, layers: {}, demo: false, runId: 0};
+const state = {ctx: null, results: {}, map: null, layers: {}, runId: 0};
 
 async function runSource(id, ctx, runId) {
   let result;
-  if (state.demo) {
-    result = {status: "sample", data: SAMPLE[id](ctx), reason: "mode démonstration"};
-  } else {
-    try { result = {status: "live", data: await CONNECTORS[id](ctx)}; }
-    catch (e) {
-      const reason = e.message || String(e);
-      if (e.kind === "empty") result = {status: "empty", reason};
-      else if (CONFIG.fallbackToSample) result = {status: "sample", data: SAMPLE[id](ctx), reason, failed: e.kind !== "nosource"};
-      else result = {status: "error", reason};
-    }
-  }
+  try { result = {status: "live", data: await CONNECTORS[id](ctx)}; }
+  catch (e) { result = {status: e.kind === "empty" ? "empty" : "error", reason: e.message || String(e)}; }
   result.fetchedAt = new Date();
   if (runId !== state.runId) return;
   state.results[id] = result;
   renderCard(id); renderCoverage(); updateMap(id);
 }
+async function retrySource(id) {
+  const runId = state.runId;
+  state.results[id] = undefined; renderCoverage();
+  const card = $("#card-" + id); card.setAttribute("aria-busy", "true");
+  card.querySelector(".body").innerHTML = `<div class="skeleton" aria-hidden="true"></div><p class="sr-only">Nouvelle tentative…</p>`;
+  card.querySelector(".src")?.remove();
+  if (state.layers[id] && state.map) { state.map.removeLayer(state.layers[id]); delete state.layers[id]; }
+  await runSource(id, state.ctx, runId);
+  if (runId === state.runId && THEMES.every(t => state.results[t])) renderSynthesis();
+}
 
-async function startReport(ctx, {demo = false} = {}) {
-  state.ctx = ctx; state.demo = demo; state.results = {}; state.runId++;
+async function startReport(ctx) {
+  state.ctx = ctx; state.results = {}; state.runId++;
   const runId = state.runId;
   $("#value").hidden = true;
   $("#report").hidden = false;
   $("#h-report").textContent = ctx.label;
-  $("#report-meta").textContent = `${ctx.postcode || ""} ${ctx.city || ""} · code commune ${ctx.citycode || "—"} · rapport généré le ${today()}`.trim();
-  $("#sample-banner").innerHTML = "";
+  $("#report-meta").textContent = [[ctx.postcode, ctx.city].filter(Boolean).join(" "), `code commune ${ctx.citycode || "—"}`, `rapport généré le ${today()}`].filter(Boolean).join(" · ");
+  $("#missing-banner").innerHTML = "";
   $("#att-list").innerHTML = $("#fort-list").innerHTML = `<li class="muted" style="background:none;border:0">Analyse en cours…</li>`;
   $("#cards").innerHTML = THEMES.map(id => `<article class="card" id="card-${id}" aria-labelledby="t-${id}" aria-busy="true"><h3 id="t-${id}">${esc(THEME_TITLES[id])}</h3><div class="body"><div class="skeleton" aria-hidden="true"></div><p class="sr-only">Chargement…</p></div></article>`).join("");
   renderCoverage(); renderLicences(); initMap();
-  history.replaceState(null, "", "#" + new URLSearchParams({a: ctx.label, lat: ctx.lat.toFixed(6), lon: ctx.lon.toFixed(6), c: ctx.citycode || "", id: ctx.id || "", pc: ctx.postcode || "", v: ctx.city || "", ...(demo ? {demo: "1"} : {})}).toString());
+  history.replaceState(null, "", "#" + new URLSearchParams({a: ctx.label, lat: ctx.lat.toFixed(6), lon: ctx.lon.toFixed(6), c: ctx.citycode || "", id: ctx.id || "", pc: ctx.postcode || "", v: ctx.city || ""}).toString());
   $("#print-url").textContent = "Lien du rapport : " + location.href;
   $("#h-report").focus();
   await Promise.allSettled(THEMES.map(id => runSource(id, ctx, runId)));
@@ -717,12 +652,12 @@ async function startReport(ctx, {demo = false} = {}) {
 }
 
 /* ============================ Rendu : couverture ============================ */
-const ST_LABEL = {live: "✓ Données réelles", sample: "⚠ Exemple", error: "✗ Indisponible", empty: "∅ Pas de donnée", loading: "… Chargement"};
+const ST_LABEL = {live: "✓ Données réelles", error: "✗ Indisponible", empty: "∅ Pas de donnée", loading: "… Chargement"};
 function renderCoverage() {
-  const items = [["ban", {status: state.demo ? "sample" : "live"}], ...THEMES.map(id => [id, state.results[id] || {status: "loading"}])];
+  const items = [["ban", {status: "live"}], ...THEMES.map(id => [id, state.results[id] || {status: "loading"}])];
   $("#coverage").innerHTML = items.map(([id, r]) => `<li><span class="st ${r.status}">${ST_LABEL[r.status]}</span><span><strong>${esc(SOURCES[id].short)}</strong><br><span class="muted">${esc(SOURCES[id].producer)}</span></span></li>`).join("");
-  const samples = THEMES.filter(id => state.results[id] && state.results[id].status === "sample");
-  $("#sample-banner").innerHTML = samples.length ? `<div class="banner sample" role="note"><strong>Attention :</strong> ${samples.length === THEMES.length ? "tout ce rapport utilise" : `${samples.length} bloc(s) utilisent`} des <strong>données d'exemple</strong> (${samples.map(id => esc(SOURCES[id].short)).join(", ")}). Elles servent à montrer le fonctionnement et ne décrivent pas cette adresse.</div>` : "";
+  const down = THEMES.filter(id => state.results[id] && state.results[id].status === "error");
+  $("#missing-banner").innerHTML = down.length ? `<div class="banner missing"><strong>Rapport incomplet :</strong> ${down.length === 1 ? "une source n'a" : `${down.length} sources n'ont`} pas répondu (${down.map(id => esc(SOURCES[id].short)).join(", ")}). Les fiches concernées l'indiquent, et la synthèse ne porte que sur les sources disponibles. Vous pouvez réessayer depuis chaque fiche.</div>` : "";
 }
 function srcLine(id, r, extra) {
   const s = SOURCES[id];
@@ -739,12 +674,10 @@ function renderCard(id) {
   const r = state.results[id], card = $("#card-" + id);
   if (!card) return;
   card.setAttribute("aria-busy", "false");
-  let head = "";
   if (r.status === "empty") { card.querySelector(".body").innerHTML = `<div class="card-msg empty"><strong>Pas de donnée pour cette adresse :</strong> ${esc(r.reason)}.</div>${EMPTY_HELP[id] || ""}`; card.querySelector(".src")?.remove(); card.insertAdjacentHTML("beforeend", srcLine(id, r)); return; }
-  if (r.status === "error") { card.querySelector(".body").innerHTML = `<div class="card-msg error"><strong>Source indisponible :</strong> ${esc(r.reason)}. Réessayez plus tard ou consultez directement <a href="${SOURCES[id].url}" target="_blank" rel="noopener">${esc(SOURCES[id].name)}</a>.</div>`; card.querySelector(".src")?.remove(); card.insertAdjacentHTML("beforeend", srcLine(id, r)); return; }
-  if (r.status === "sample") head = `<div class="card-msg sample"><strong>Exemple, pas la réalité de cette adresse.</strong> ${r.reason === "mode démonstration" ? "Mode démonstration." : r.failed ? `La source réelle n'a pas répondu (${esc(r.reason)}).` : esc(r.reason) + "."}</div>`;
+  if (r.status === "error") { card.querySelector(".body").innerHTML = `<div class="card-msg error"><strong>Information non disponible :</strong> la source n'a pas répondu (${esc(r.reason)}). Aucune valeur n'est affichée à la place.</div><p><button type="button" class="btn small ghost" data-retry="${id}">Réessayer</button> <span class="muted" style="font-size:.88rem">ou consultez directement <a href="${SOURCES[id].url}" target="_blank" rel="noopener">${esc(SOURCES[id].name)}</a>.</span></p>`; card.querySelector(".src")?.remove(); card.insertAdjacentHTML("beforeend", srcLine(id, r)); return; }
   const {html, extra} = RENDER[id](r.data, r);
-  card.querySelector(".body").innerHTML = head + html;
+  card.querySelector(".body").innerHTML = html;
   card.querySelector(".src")?.remove();
   card.insertAdjacentHTML("beforeend", srcLine(id, r, extra));
 }
@@ -804,7 +737,7 @@ const RENDER = {
         ${d.catnat.length ? `<ul class="plain">${d.catnat.slice(0, 4).map(c => `<li>${fmtDate(c.date)} : ${esc(c.label)}</li>`).join("")}</ul>` : ""}` : `<p class="muted">Arrêtés CatNat : non disponibles.</p>`}
       <details class="more"><summary>Risques non concernés (${no.length})</summary><ul class="plain">${no.map(x => `<li>${esc(x.label)} : ${esc(x.statut)}</li>`).join("")}</ul></details>
       ${d.communeRisks && d.communeRisks.length ? `<p class="muted" style="font-size:.85rem;margin:.4rem 0 0">Risques recensés dans la commune : ${d.communeRisks.map(esc).join(", ")}.</p>` : ""}
-      ${d.failed && d.failed.length ? `<p class="muted" style="font-size:.82rem;margin:.3rem 0 0">Données partielles : ${d.failed.length} requête(s) Géorisques sans réponse.</p>` : ""}
+      ${d.failed && d.failed.length ? `<div class="card-msg error" style="margin-top:.5rem"><strong>Non vérifié</strong> (Géorisques n'a pas répondu) : ${d.failed.map(esc).join(", ")}.</div>` : ""}
       <p style="margin:.5rem 0 0;font-size:.9rem"><a href="${esc(d.url)}" target="_blank" rel="noopener">Rapport complet sur Géorisques</a></p>`;
     return {html, extra: "Base mise à jour en continu par l'État"};
   },
@@ -869,7 +802,7 @@ function noiseLevel(d) {
 function renderSynthesis() {
   const att = [], fort = [];
   const R = state.results;
-  const add = (list, id, text, detail) => list.push({id, text, detail, sample: R[id] && R[id].status === "sample"});
+  const add = (list, id, text, detail) => list.push({id, text, detail});
   // Énergie
   if (R.dpe?.data) {
     const d = R.dpe.data, best = [...d.same].sort((a, b) => String(b.date).localeCompare(String(a.date)))[0];
@@ -890,7 +823,8 @@ function renderSynthesis() {
   if (R.georisques?.data) {
     const d = R.georisques.data, al = d.items.filter(x => x.alert);
     al.forEach(x => add(att, "georisques", `Risque : ${x.label}`, x.statut));
-    if (!al.length) add(fort, "georisques", "Aucun risque naturel ou technologique notable signalé", "Selon Géorisques, autour de cette adresse");
+    if (d.failed && d.failed.length) add(att, "georisques", `Risques non vérifiés : ${d.failed.join(", ")}`, "Géorisques n'a pas répondu pour ces thèmes : réessayez");
+    else if (!al.length) add(fort, "georisques", "Aucun risque naturel ou technologique notable signalé", "Selon Géorisques, autour de cette adresse");
     if (d.catnatTotal >= 5) add(att, "georisques", `${d.catnatTotal} arrêtés de catastrophe naturelle dans la commune`, "Interrogez le vendeur sur les sinistres indemnisés (obligatoire dans l'état des risques)");
   }
   // Bruit
@@ -919,7 +853,9 @@ function renderSynthesis() {
     if (nc) add(att, "water", `Eau du robinet : ${nc} prélèvement(s) non conforme(s) sur 12 mois`, "Consultez le détail des paramètres en mairie ou auprès de l'ARS");
     else add(fort, "water", "Eau du robinet conforme sur les 12 derniers mois", `${R.water.data.samples} prélèvements contrôlés`);
   }
-  const li = (x) => `<li>${esc(x.text)}${x.sample ? `<span class="tag">exemple</span>` : ""}<small>${esc(x.detail || "")} · ${esc(SOURCES[x.id].short)}</small></li>`;
+  const li = (x) => `<li>${esc(x.text)}<small>${esc(x.detail || "")}${x.missing ? "" : ` · ${esc(SOURCES[x.id].short)}`}</small></li>`;
+  const down = THEMES.filter(id => R[id] && R[id].status === "error");
+  if (down.length) att.push({id: down[0], text: `Analyse incomplète : ${down.map(id => SOURCES[id].short).join(", ")} indisponible${down.length > 1 ? "s" : ""}`, detail: "Ces thèmes n'ont pas pu être vérifiés : réessayez ou consultez la source", missing: true});
   $("#att-list").innerHTML = att.map(li).join("") || `<li>Aucun point d'attention détecté dans les sources disponibles.</li>`;
   $("#fort-list").innerHTML = fort.map(li).join("") || `<li>Aucun point fort détecté dans les sources disponibles.</li>`;
 }
@@ -954,7 +890,7 @@ function initMap() {
 function updateMap(id) {
   if (!state.map || !LAYER_DEFS[id]) return;
   const r = state.results[id]; if (!r || !r.data) return;
-  const g = L.layerGroup(), tag = r.status === "sample" ? " <em>(exemple)</em>" : "";
+  const g = L.layerGroup(), tag = "";
   const dot = (la, lo, color, html) => la != null && lo != null && L.circleMarker([la, lo], {radius: 6, color: "#fff", weight: 1.5, fillColor: color, fillOpacity: .9}).bindPopup(html + tag).addTo(g);
   if (id === "dvf") r.data.sales.forEach(s => dot(s.lat, s.lon, LAYER_DEFS.dvf.color, `<strong>${fmtEur(s.price)}</strong> – ${esc(s.type)} ${fmtInt(s.surface)} m²<br>${fmtInt(s.ppm)} €/m² · ${fmtDate(s.date)}<br>${esc(s.address)}`));
   if (id === "dpe") { const C = {A: "#008a5e", B: "#33a357", C: "#9dc76c", D: "#f2e33a", E: "#f2b33b", F: "#ec7d2d", G: "#d1281f"}; r.data.nearby.forEach(s => dot(s.lat, s.lon, C[s.label], `DPE <strong>${esc(s.label)}</strong>${s.conso ? ` – ${fmtInt(s.conso)} kWh/m²/an` : ""}<br>${esc(s.address || "")}<br>${fmtDate(s.date)}`)); }
@@ -983,7 +919,7 @@ input.addEventListener("input", () => {
   debounceT = setTimeout(async () => {
     const seq = ++reqSeq;
     try { const r = await banSearch(q); if (seq !== reqSeq) return; sugg = r; active = -1; renderList(); setMsg(r.length ? "" : "Aucune adresse trouvée. Vérifiez l'orthographe ou ajoutez la commune."); }
-    catch (e) { if (seq !== reqSeq) return; sugg = []; closeList(); setMsg(`Le service d'adresses (Base Adresse Nationale) ne répond pas : ${esc(e.message)}. <button type="button" class="chip" data-run-demo>Voir la démo hors ligne</button>`, "error"); }
+    catch (e) { if (seq !== reqSeq) return; sugg = []; closeList(); setMsg(`Le service d'adresses (Base Adresse Nationale) ne répond pas : ${esc(e.message)}. Réessayez dans quelques instants.`, "error"); }
   }, 250);
 });
 input.addEventListener("keydown", (e) => {
@@ -1008,11 +944,10 @@ $("#search-form").addEventListener("submit", async (e) => {
   if (sugg.length && sugg[Math.max(0, active)].label === q) return choose(sugg[Math.max(0, active)]);
   setMsg("Recherche de l'adresse…");
   try { const r = await banSearch(q, 1); if (!r.length) return setMsg("Adresse introuvable dans la Base Adresse Nationale. Précisez le numéro, la rue et la commune.", "error"); choose(r[0]); }
-  catch (err) { setMsg(`Le service d'adresses ne répond pas : ${esc(err.message)}. <button type="button" class="chip" data-run-demo>Voir la démo hors ligne</button>`, "error"); }
+  catch (err) { setMsg(`Le service d'adresses ne répond pas : ${esc(err.message)}. Réessayez dans quelques instants.`, "error"); }
 });
 document.querySelectorAll("[data-example]").forEach(b => b.addEventListener("click", () => { input.value = b.dataset.example; $("#search-form").requestSubmit(); }));
-const DEMO_CTX = {label: "Adresse de démonstration, 80000 Amiens", city: "Amiens", postcode: "80000", citycode: "80021", id: "", lat: 49.8941, lon: 2.2958, type: "housenumber"};
-document.addEventListener("click", (e) => { if (e.target.closest("[data-run-demo]") || e.target.id === "demo-btn") startReport(DEMO_CTX, {demo: true}); });
+document.addEventListener("click", (e) => { const b = e.target.closest("[data-retry]"); if (b) retrySource(b.dataset.retry); });
 
 /* ============================ Actions rapport ============================ */
 $("#print-btn").addEventListener("click", () => window.print());
@@ -1036,7 +971,7 @@ $("#sources-grid").innerHTML = ["ban", ...THEMES].map(id => `<li><strong>${esc(S
   if (isNaN(lat) || isNaN(lon) || lat < -90 || lat > 90 || lon < -180 || lon > 180) return;
   const ctx = {label: (p.get("a") || "Adresse partagée").slice(0, 200), lat, lon, citycode: /^[0-9AB]{5}$/.test(p.get("c") || "") ? p.get("c") : "", id: (p.get("id") || "").slice(0, 40), postcode: (p.get("pc") || "").slice(0, 5), city: (p.get("v") || "").slice(0, 80)};
   input.value = ctx.label;
-  startReport(ctx, {demo: p.get("demo") === "1"});
+  startReport(ctx);
 })();
 </script>
 </body>

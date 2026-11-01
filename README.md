@@ -16,7 +16,7 @@ cd ce-logement-vraiment
 python3 -m http.server 8000
 ```
 
-Ouvrez ensuite http://localhost:8000. Vous pouvez aussi ouvrir `index.html` directement dans un navigateur. Pour essayer sans réseau, utilisez le bouton **« Démo hors ligne »**.
+Ouvrez ensuite http://localhost:8000. Le site ne fonctionne qu'avec un accès à internet : il n'utilise **aucune donnée d'exemple**.
 
 Le test de fumée nécessite Playwright et Chromium :
 
@@ -30,7 +30,7 @@ Test contre les vraies API (réseau requis) :
 node tests/live.test.js /chemin/vers/node_modules/leaflet/dist
 ```
 
-Le test de fumée hors ligne couvre deux scénarios : le réseau coupé (repli explicite vers la démo) et des API simulées à partir de fixtures au format des API réelles (autocomplétion au clavier, agrégation DVF, DPE de l'adresse, risques, CatNat, bruit, écoles, eau, carte, URL partagée, absence de débordement sur mobile).
+Le test de fumée hors ligne couvre trois scénarios : le réseau coupé (chaque fiche indique « Information non disponible », sans aucune valeur), des pannes partielles (bouton « Réessayer », thèmes Géorisques « non vérifiés ») et des API simulées à partir de fixtures au format des API réelles (autocomplétion au clavier, agrégation DVF, DPE de l'adresse, risques, CatNat, bruit, écoles, eau, carte, URL partagée, absence de débordement sur mobile).
 
 ## Fonctionnalités (MVP)
 
@@ -66,6 +66,13 @@ Toutes les sources ci-dessous ont été **vérifiées contre les vraies API le 0
 ### Données Arcep précalculées
 
 Le workflow `.github/workflows/arcep.yml` (le 3 de chaque mois, ou à la demande depuis l'onglet **Actions**) lance `scripts/build_arcep.py`. Le script télécharge `commune_techno.csv` et `commune_debit.csv`, vérifie leurs colonnes et refuse de publier s'il manque des départements. Il écrit ensuite un JSON par département dans `data/arcep/` et le commite. GitHub Pages sert ces fichiers sur le même domaine que le site.
+
+## Pas de remplissage
+
+Le rapport n'affiche **que des données réelles**. Si une source ne répond pas :
+- sa fiche indique « Information non disponible », avec la raison et un bouton **Réessayer** ;
+- un bandeau « Rapport incomplet » liste les sources manquantes ;
+- la synthèse ajoute un point d'attention « Analyse incomplète » et ne conclut jamais à l'absence de risque sur un thème non vérifié (par exemple si l'API « argiles » de Géorisques n'a pas répondu).
 
 ## RGPD et vie privée
 

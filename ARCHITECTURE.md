@@ -22,7 +22,7 @@ Navigateur (index.html, aucune dépendance de build ; Leaflet 1.9.4 via cdnjs)
 │     ├─ 7 connecteurs lancés en parallèle (Promise.allSettled, délai max de 15 s chacun)
 │     │    dvf · dpe · georisques(+catnat) · noise(Overpass) · arcep · schools · water(Hub'Eau)
 │     │    chacun renvoie un résultat normalisé :
-│     │    {status: live | sample | empty | error, data, reason, fetchedAt}
+│     │    {status: live | empty | error, data, reason, fetchedAt}
 │     ├─ rendu progressif : chaque fiche s'affiche dès que sa source répond
 │     └─ synthèse : des règles explicites (renderSynthesis) produisent les points d'attention et les points forts
 │
@@ -35,7 +35,7 @@ Navigateur (index.html, aucune dépendance de build ; Leaflet 1.9.4 via cdnjs)
 - **Une page HTML autonome, sans serveur.** Toutes les sources retenues acceptent les appels CORS. Le navigateur les interroge donc directement : rien à héberger côté back, aucun stockage, et donc aucun traitement de données personnelles par le service (RGPD). La page s'ouvre en double-cliquant dessus ou sur n'importe quel hébergement statique.
 - **Vanilla JS plutôt qu'un framework.** Pas d'étape de build, code lisible en un seul fichier, chargement rapide sur mobile. Le passage à un framework n'aura de sens qu'avec le back-end (voir les prochaines étapes).
 - **Connecteurs isolés, avec un contrat commun.** Chaque source est une fonction `CONNECTORS.x(ctx)`. En ajouter une revient à écrire un connecteur, un rendu et des règles de synthèse. Les URL sont regroupées dans `CONFIG.endpoints`.
-- **Échec explicite plutôt qu'écran vide.** Une source peut aboutir à quatre états : données réelles, pas de donnée (avec l'explication et une piste), indisponible, ou exemple. Les données d'exemple sont générées de façon déterministe autour du point demandé et **toujours étiquetées** : badge, bandeau et mention « exemple » dans la synthèse. On peut les désactiver avec `CONFIG.fallbackToSample = false`.
+- **Échec explicite, jamais de remplissage.** Chaque source aboutit à l'un de trois états : données réelles, pas de donnée (avec l'explication et une piste), ou indisponible (avec un bouton « Réessayer »). Aucune valeur d'exemple ni estimation par défaut n'est jamais affichée, et la synthèse signale les thèmes non vérifiés.
 - **Règles de synthèse lisibles plutôt qu'un score opaque.** Pour une décision à fort enjeu, chaque point affiché renvoie à sa source et à son seuil (par exemple : DPE F/G, risque présent, plus de 5 arrêtés CatNat, grand axe à moins de 200 m, école à moins de 500 m).
 
 ## 4. Cible de production (après le prototype)
